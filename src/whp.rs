@@ -93,27 +93,35 @@ impl Partition {
         Ok(())
     }
 
-    pub fn create_virtual_processors(&mut self, index: UINT32) -> Result<(), HRESULT> {
+    pub fn create_virtual_processor(&mut self, index: UINT32) -> Result<VirtualProcessor, HRESULT> {
         check_result(unsafe { WHvCreateVirtualProcessor(self.partition, index, 0) })?;
-        Ok(())
+        Ok(VirtualProcessor {
+            partition: &self.partition,
+            index: index,
+        })
     }
+}
 
-    pub fn delete_virtual_processors(&mut self, index: UINT32) -> Result<(), HRESULT> {
-        check_result(unsafe { WHvDeleteVirtualProcessor(self.partition, index) })?;
-        Ok(())
+impl Drop for Partition {
+    fn drop(&mut self) {
+        check_result(unsafe { WHvDeletePartition(self.partition) }).unwrap();
     }
+}
 
-    pub fn run_virtual_processor(
-        &mut self,
-        index: UINT32,
-    ) -> Result<WHV_RUN_VP_EXIT_CONTEXT, HRESULT> {
+pub struct VirtualProcessor<'a> {
+    partition: &'a WHV_PARTITION_HANDLE,
+    index: UINT32,
+}
+
+impl<'a> VirtualProcessor<'a> {
+    pub fn run(&mut self) -> Result<WHV_RUN_VP_EXIT_CONTEXT, HRESULT> {
         let mut exit_context: WHV_RUN_VP_EXIT_CONTEXT = unsafe { std::mem::zeroed() };
         let exit_context_size = std::mem::size_of::<WHV_RUN_VP_EXIT_CONTEXT>() as UINT32;
 
         check_result(unsafe {
             WHvRunVirtualProcessor(
-                self.partition,
-                index,
+                *self.partition,
+                self.index,
                 &mut exit_context as *mut _ as *mut VOID,
                 exit_context_size,
             )
@@ -121,14 +129,13 @@ impl Partition {
         Ok(exit_context)
     }
 
-    pub fn cancel_run_virtual_processor(&mut self, index: UINT32) -> Result<(), HRESULT> {
-        check_result(unsafe { WHvCancelRunVirtualProcessor(self.partition, index, 0) })?;
+    pub fn cancel_run(&mut self) -> Result<(), HRESULT> {
+        check_result(unsafe { WHvCancelRunVirtualProcessor(*self.partition, self.index, 0) })?;
         Ok(())
     }
 
-    pub fn set_virtual_processor_registers(
+    pub fn set_registers(
         &mut self,
-        index: UINT32,
         reg_names: &[WHV_REGISTER_NAME],
         reg_values: &[WHV_REGISTER_VALUE],
     ) -> Result<(), HRESULT> {
@@ -140,8 +147,8 @@ impl Partition {
 
         check_result(unsafe {
             WHvSetVirtualProcessorRegisters(
-                self.partition,
-                index,
+                *self.partition,
+                self.index,
                 reg_names.as_ptr(),
                 num_regs as UINT32,
                 reg_values.as_ptr(),
@@ -151,9 +158,8 @@ impl Partition {
         Ok(())
     }
 
-    pub fn get_virtual_processor_registers(
+    pub fn get_registers(
         &mut self,
-        index: UINT32,
         reg_names: &[WHV_REGISTER_NAME],
         reg_values: &mut [WHV_REGISTER_VALUE],
     ) -> Result<(), HRESULT> {
@@ -165,26 +171,20 @@ impl Partition {
 
         check_result(unsafe {
             WHvGetVirtualProcessorRegisters(
-                self.partition,
-                index,
+                *self.partition,
+                self.index,
                 reg_names.as_ptr(),
                 num_regs as UINT32,
                 reg_values.as_mut_ptr(),
             )
         })?;
-
         Ok(())
     }
 }
 
-impl Drop for Partition {
+impl<'a> Drop for VirtualProcessor<'a> {
     fn drop(&mut self) {
-        match check_result(unsafe { WHvDeletePartition(self.partition) }) {
-            Err(e) => panic!("Failed to delete partition 0x{:X}", e),
-            Ok(_) => {
-                self.partition = std::ptr::null_mut();
-            }
-        };
+        check_result(unsafe { WHvDeleteVirtualProcessor(*self.partition, self.index) }).unwrap();
     }
 }
 
@@ -284,8 +284,8 @@ mod tests {
         setup_vcpu_test(&mut p);
 
         let vp_index: UINT32 = 0;
-        p.create_virtual_processors(vp_index).unwrap();
-        p.delete_virtual_processors(vp_index).unwrap();
+        let vp = p.create_virtual_processor(vp_index).unwrap();
+        drop(vp)
     }
 
     #[test]
@@ -294,8 +294,8 @@ mod tests {
         setup_vcpu_test(&mut p);
 
         let vp_index: UINT32 = 0;
-        p.create_virtual_processors(vp_index).unwrap();
-        let mut _exit_context: WHV_RUN_VP_EXIT_CONTEXT = p.run_virtual_processor(vp_index).unwrap();
+        let mut vp = p.create_virtual_processor(vp_index).unwrap();
+        let mut _exit_context: WHV_RUN_VP_EXIT_CONTEXT = vp.run().unwrap();
     }
 
     #[test]
@@ -304,8 +304,8 @@ mod tests {
         setup_vcpu_test(&mut p);
 
         let vp_index: UINT32 = 0;
-        p.create_virtual_processors(vp_index).unwrap();
-        p.cancel_run_virtual_processor(vp_index).unwrap();
+        let mut vp = p.create_virtual_processor(vp_index).unwrap();
+        vp.cancel_run().unwrap();
     }
 
     #[test]
@@ -314,7 +314,7 @@ mod tests {
         setup_vcpu_test(&mut p);
 
         let vp_index: UINT32 = 0;
-        p.create_virtual_processors(vp_index).unwrap();
+        let mut vp = p.create_virtual_processor(vp_index).unwrap();
 
         const NUM_REGS: UINT32 = 1;
         const REG_VALUE: UINT64 = 11111111;
@@ -326,10 +326,8 @@ mod tests {
         reg_names[0] = WHV_REGISTER_NAME::WHvX64RegisterRax;
         reg_values[0].Reg64 = REG_VALUE;
 
-        p.set_virtual_processor_registers(vp_index, &reg_names, &reg_values)
-            .unwrap();
-        p.get_virtual_processor_registers(vp_index, &reg_names, &mut reg_values_out)
-            .unwrap();
+        vp.set_registers(&reg_names, &reg_values).unwrap();
+        vp.get_registers(&reg_names, &mut reg_values_out).unwrap();
 
         unsafe {
             assert_eq!(
