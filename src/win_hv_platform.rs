@@ -935,6 +935,12 @@ mod tests {
                     "WHvRunVirtualProcessor failed with 0x{:X}",
                     result
                 );
+
+                assert_eq!(
+                    exit_context.ExitReason,
+                    WHV_RUN_VP_EXIT_REASON::WHvRunVpExitReasonMemoryAccess,
+                    "Unexpected exit reason"
+                )
             });
         });
     }

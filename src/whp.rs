@@ -342,7 +342,13 @@ mod tests {
 
         let vp_index: UINT32 = 0;
         let vp = p.create_virtual_processor(vp_index).unwrap();
-        let mut _exit_context: WHV_RUN_VP_EXIT_CONTEXT = vp.run().unwrap();
+        let exit_context: WHV_RUN_VP_EXIT_CONTEXT = vp.run().unwrap();
+
+        assert_eq!(
+            exit_context.ExitReason,
+            WHV_RUN_VP_EXIT_REASON::WHvRunVpExitReasonMemoryAccess,
+            "Unexpected exit reason"
+        )
     }
 
     #[test]
