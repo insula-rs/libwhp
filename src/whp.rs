@@ -54,7 +54,7 @@ impl Partition {
     }
 
     pub fn set_property(
-        &mut self,
+        &self,
         property_code: WHV_PARTITION_PROPERTY_CODE,
         property: &WHV_PARTITION_PROPERTY,
     ) -> Result<(), HRESULT> {
@@ -70,7 +70,7 @@ impl Partition {
     }
 
     pub fn get_property(
-        &mut self,
+        &self,
         property_code: WHV_PARTITION_PROPERTY_CODE,
     ) -> Result<WHV_PARTITION_PROPERTY, HRESULT> {
         let mut property: WHV_PARTITION_PROPERTY = unsafe { std::mem::zeroed() };
@@ -88,12 +88,12 @@ impl Partition {
         Ok(property)
     }
 
-    pub fn setup(&mut self) -> Result<(), HRESULT> {
+    pub fn setup(&self) -> Result<(), HRESULT> {
         check_result(unsafe { WHvSetupPartition(self.partition) })?;
         Ok(())
     }
 
-    pub fn create_virtual_processor(&mut self, index: UINT32) -> Result<VirtualProcessor, HRESULT> {
+    pub fn create_virtual_processor(&self, index: UINT32) -> Result<VirtualProcessor, HRESULT> {
         check_result(unsafe { WHvCreateVirtualProcessor(self.partition, index, 0) })?;
         Ok(VirtualProcessor {
             partition: &self.partition,
@@ -102,7 +102,7 @@ impl Partition {
     }
 
     pub fn map_gpa_range(
-        &mut self,
+        &self,
         source_address: *const VOID,
         guest_address: WHV_GUEST_PHYSICAL_ADDRESS,
         size: UINT64,
@@ -115,7 +115,7 @@ impl Partition {
     }
 
     pub fn unmap_gpa_range(
-        &mut self,
+        &self,
         guest_address: WHV_GUEST_PHYSICAL_ADDRESS,
         size: UINT64,
     ) -> Result<(), HRESULT> {
@@ -140,7 +140,7 @@ impl<'a> VirtualProcessor<'a> {
         return self.index;
     }
 
-    pub fn run(&mut self) -> Result<WHV_RUN_VP_EXIT_CONTEXT, HRESULT> {
+    pub fn run(&self) -> Result<WHV_RUN_VP_EXIT_CONTEXT, HRESULT> {
         let mut exit_context: WHV_RUN_VP_EXIT_CONTEXT = unsafe { std::mem::zeroed() };
         let exit_context_size = std::mem::size_of::<WHV_RUN_VP_EXIT_CONTEXT>() as UINT32;
 
@@ -155,13 +155,13 @@ impl<'a> VirtualProcessor<'a> {
         Ok(exit_context)
     }
 
-    pub fn cancel_run(&mut self) -> Result<(), HRESULT> {
+    pub fn cancel_run(&self) -> Result<(), HRESULT> {
         check_result(unsafe { WHvCancelRunVirtualProcessor(*self.partition, self.index, 0) })?;
         Ok(())
     }
 
     pub fn set_registers(
-        &mut self,
+        &self,
         reg_names: &[WHV_REGISTER_NAME],
         reg_values: &[WHV_REGISTER_VALUE],
     ) -> Result<(), HRESULT> {
@@ -185,7 +185,7 @@ impl<'a> VirtualProcessor<'a> {
     }
 
     pub fn get_registers(
-        &mut self,
+        &self,
         reg_names: &[WHV_REGISTER_NAME],
         reg_values: &mut [WHV_REGISTER_VALUE],
     ) -> Result<(), HRESULT> {
@@ -208,7 +208,7 @@ impl<'a> VirtualProcessor<'a> {
     }
 
     pub fn translate_gva(
-        &mut self,
+        &self,
         gva: WHV_GUEST_VIRTUAL_ADDRESS,
         flags: WHV_TRANSLATE_GVA_FLAGS,
     ) -> Result<(WHV_TRANSLATE_GVA_RESULT, WHV_GUEST_PHYSICAL_ADDRESS), HRESULT> {
@@ -275,7 +275,7 @@ mod tests {
 
     #[test]
     fn test_set_get_partition_property() {
-        let mut p: Partition = Partition::new().unwrap();
+        let p: Partition = Partition::new().unwrap();
         let property_code = WHV_PARTITION_PROPERTY_CODE::WHvPartitionPropertyCodeProcessorCount;
         let mut property: WHV_PARTITION_PROPERTY = unsafe { std::mem::zeroed() };
         property.ProcessorCount = 1;
@@ -293,7 +293,7 @@ mod tests {
 
     #[test]
     fn test_setup_partition() {
-        let mut p: Partition = Partition::new().unwrap();
+        let p: Partition = Partition::new().unwrap();
         let mut property: WHV_PARTITION_PROPERTY = unsafe { std::mem::zeroed() };
         property.ProcessorCount = 1;
 
@@ -307,14 +307,14 @@ mod tests {
 
     #[test]
     fn test_setup_partition_fail() {
-        let mut p: Partition = Partition::new().unwrap();
+        let p: Partition = Partition::new().unwrap();
         match p.setup() {
             Err(e) => assert_eq!(e, WHV_E_INVALID_PARTITION_CONFIG, "Unexpected error code"),
             Ok(()) => panic!("An error was expected"),
         }
     }
 
-    fn setup_vcpu_test(p: &mut Partition) {
+    fn setup_vcpu_test(p: &Partition) {
         let mut property: WHV_PARTITION_PROPERTY = unsafe { std::mem::zeroed() };
         property.ProcessorCount = 1;
 
@@ -327,8 +327,8 @@ mod tests {
 
     #[test]
     fn test_create_delete_virtual_processor() {
-        let mut p: Partition = Partition::new().unwrap();
-        setup_vcpu_test(&mut p);
+        let p: Partition = Partition::new().unwrap();
+        setup_vcpu_test(&p);
 
         let vp_index: UINT32 = 0;
         let vp = p.create_virtual_processor(vp_index).unwrap();
@@ -337,31 +337,31 @@ mod tests {
 
     #[test]
     fn test_run_virtual_processor() {
-        let mut p: Partition = Partition::new().unwrap();
-        setup_vcpu_test(&mut p);
+        let p: Partition = Partition::new().unwrap();
+        setup_vcpu_test(&p);
 
         let vp_index: UINT32 = 0;
-        let mut vp = p.create_virtual_processor(vp_index).unwrap();
+        let vp = p.create_virtual_processor(vp_index).unwrap();
         let mut _exit_context: WHV_RUN_VP_EXIT_CONTEXT = vp.run().unwrap();
     }
 
     #[test]
     fn test_cancel_virtual_processor() {
-        let mut p: Partition = Partition::new().unwrap();
-        setup_vcpu_test(&mut p);
+        let p: Partition = Partition::new().unwrap();
+        setup_vcpu_test(&p);
 
         let vp_index: UINT32 = 0;
-        let mut vp = p.create_virtual_processor(vp_index).unwrap();
+        let vp = p.create_virtual_processor(vp_index).unwrap();
         vp.cancel_run().unwrap();
     }
 
     #[test]
     fn test_set_get_virtual_processor_registers() {
-        let mut p: Partition = Partition::new().unwrap();
-        setup_vcpu_test(&mut p);
+        let p: Partition = Partition::new().unwrap();
+        setup_vcpu_test(&p);
 
         let vp_index: UINT32 = 0;
-        let mut vp = p.create_virtual_processor(vp_index).unwrap();
+        let vp = p.create_virtual_processor(vp_index).unwrap();
 
         const NUM_REGS: UINT32 = 1;
         const REG_VALUE: UINT64 = 11111111;
@@ -386,7 +386,7 @@ mod tests {
 
     #[test]
     fn test_map_gpa_range() {
-        let mut p: Partition = Partition::new().unwrap();
+        let p: Partition = Partition::new().unwrap();
         const SIZE: UINT64 = 1024;
         let source_address = Box::new([0; SIZE as usize]);
         let guest_address: WHV_GUEST_PHYSICAL_ADDRESS = 0;
@@ -405,7 +405,7 @@ mod tests {
 
     #[test]
     fn test_unmap_gpa_range() {
-        let mut p: Partition = Partition::new().unwrap();
+        let p: Partition = Partition::new().unwrap();
         const SIZE: UINT64 = 1024;
         let guest_address: WHV_GUEST_PHYSICAL_ADDRESS = 0;
 
@@ -417,11 +417,11 @@ mod tests {
 
     #[test]
     fn test_translate_gva() {
-        let mut p: Partition = Partition::new().unwrap();
-        setup_vcpu_test(&mut p);
+        let p: Partition = Partition::new().unwrap();
+        setup_vcpu_test(&p);
 
         let vp_index: UINT32 = 0;
-        let mut vp = p.create_virtual_processor(vp_index).unwrap();
+        let vp = p.create_virtual_processor(vp_index).unwrap();
 
         let gva: WHV_GUEST_PHYSICAL_ADDRESS = 0;
         let (translation_result, gpa) = vp.translate_gva(
@@ -441,8 +441,8 @@ mod tests {
 
     #[test]
     fn test_virtual_processor_index() {
-        let mut p: Partition = Partition::new().unwrap();
-        setup_vcpu_test(&mut p);
+        let p: Partition = Partition::new().unwrap();
+        setup_vcpu_test(&p);
 
         let vp_index: UINT32 = 0;
         let vp = p.create_virtual_processor(vp_index).unwrap();
