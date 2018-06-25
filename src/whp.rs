@@ -136,6 +136,10 @@ pub struct VirtualProcessor<'a> {
 }
 
 impl<'a> VirtualProcessor<'a> {
+    pub fn index(&self) -> UINT32 {
+        return self.index;
+    }
+
     pub fn run(&mut self) -> Result<WHV_RUN_VP_EXIT_CONTEXT, HRESULT> {
         let mut exit_context: WHV_RUN_VP_EXIT_CONTEXT = unsafe { std::mem::zeroed() };
         let exit_context_size = std::mem::size_of::<WHV_RUN_VP_EXIT_CONTEXT>() as UINT32;
@@ -433,5 +437,16 @@ mod tests {
         );
 
         assert_eq!(gpa, 0, "Unexpected GPA value");
+    }
+
+    #[test]
+    fn test_virtual_processor_index() {
+        let mut p: Partition = Partition::new().unwrap();
+        setup_vcpu_test(&mut p);
+
+        let vp_index: UINT32 = 0;
+        let vp = p.create_virtual_processor(vp_index).unwrap();
+
+        assert_eq!(vp.index(), vp_index, "Index value not matching");
     }
 }
