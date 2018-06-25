@@ -100,6 +100,28 @@ impl Partition {
             index: index,
         })
     }
+
+    pub fn map_gpa_range(
+        &mut self,
+        source_address: *const VOID,
+        guest_address: WHV_GUEST_PHYSICAL_ADDRESS,
+        size: UINT64,
+        flags: WHV_MAP_GPA_RANGE_FLAGS,
+    ) -> Result<(), HRESULT> {
+        check_result(unsafe {
+            WHvMapGpaRange(self.partition, source_address, guest_address, size, flags)
+        })?;
+        Ok(())
+    }
+
+    pub fn unmap_gpa_range(
+        &mut self,
+        guest_address: WHV_GUEST_PHYSICAL_ADDRESS,
+        size: UINT64,
+    ) -> Result<(), HRESULT> {
+        check_result(unsafe { WHvUnmapGpaRange(self.partition, guest_address, size) })?;
+        Ok(())
+    }
 }
 
 impl Drop for Partition {
@@ -179,6 +201,27 @@ impl<'a> VirtualProcessor<'a> {
             )
         })?;
         Ok(())
+    }
+
+    pub fn translate_gva(
+        &mut self,
+        gva: WHV_GUEST_VIRTUAL_ADDRESS,
+        flags: WHV_TRANSLATE_GVA_FLAGS,
+    ) -> Result<(WHV_TRANSLATE_GVA_RESULT, WHV_GUEST_PHYSICAL_ADDRESS), HRESULT> {
+        let mut gpa: WHV_GUEST_PHYSICAL_ADDRESS = 0;
+        let mut translation_result: WHV_TRANSLATE_GVA_RESULT = unsafe { std::mem::zeroed() };
+
+        check_result(unsafe {
+            WHvTranslateGva(
+                *self.partition,
+                self.index,
+                gva,
+                flags,
+                &mut translation_result,
+                &mut gpa,
+            )
+        })?;
+        Ok((translation_result, gpa))
     }
 }
 
@@ -337,4 +380,58 @@ mod tests {
         }
     }
 
+    #[test]
+    fn test_map_gpa_range() {
+        let mut p: Partition = Partition::new().unwrap();
+        const SIZE: UINT64 = 1024;
+        let source_address = Box::new([0; SIZE as usize]);
+        let guest_address: WHV_GUEST_PHYSICAL_ADDRESS = 0;
+
+        // TODO(alexpilotti): modify this test to have an S_OK result
+        match p.map_gpa_range(
+            source_address.as_ptr() as *const VOID,
+            guest_address,
+            SIZE,
+            WHV_MAP_GPA_RANGE_FLAGS::WHvMapGpaRangeFlagRead,
+        ) {
+            Err(E_INVALIDARG) => {}
+            _ => panic!("Should have failed with E_INVALIDARG"),
+        }
+    }
+
+    #[test]
+    fn test_unmap_gpa_range() {
+        let mut p: Partition = Partition::new().unwrap();
+        const SIZE: UINT64 = 1024;
+        let guest_address: WHV_GUEST_PHYSICAL_ADDRESS = 0;
+
+        match p.unmap_gpa_range(guest_address, SIZE) {
+            Err(WHV_E_GPA_RANGE_NOT_FOUND) => {}
+            _ => panic!("Should have failed with WHV_E_GPA_RANGE_NOT_FOUND"),
+        }
+    }
+
+    #[test]
+    fn test_translate_gva() {
+        let mut p: Partition = Partition::new().unwrap();
+        setup_vcpu_test(&mut p);
+
+        let vp_index: UINT32 = 0;
+        let mut vp = p.create_virtual_processor(vp_index).unwrap();
+
+        let gva: WHV_GUEST_PHYSICAL_ADDRESS = 0;
+        let (translation_result, gpa) = vp.translate_gva(
+            gva,
+            WHV_TRANSLATE_GVA_FLAGS::WHvTranslateGvaFlagValidateRead,
+        ).unwrap();
+
+        assert_eq!(
+            translation_result.ResultCode,
+            WHV_TRANSLATE_GVA_RESULT_CODE::WHvTranslateGvaResultGpaUnmapped,
+            "Unexpected translation result code {:?}",
+            translation_result.ResultCode
+        );
+
+        assert_eq!(gpa, 0, "Unexpected GPA value");
+    }
 }
