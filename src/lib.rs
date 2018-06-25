@@ -15,4 +15,4 @@
 extern crate libc;
 
 pub mod whp;
-mod win_hv_platform;
+pub mod win_hv_platform;
