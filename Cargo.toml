@@ -4,6 +4,8 @@ version = "0.1.0"
 authors = ["Alessandro Pilotti <apilotti@cloudbasesolutions.com>"]
 repository = "https://github.com/insula-rs/libwhp"
 license = "Apache-2.0"
+readme = "README.md"
+keywords = ["Hyper-V", "WHP", "Windows Hypervisor Platform", "virtualization"]
 description = """
 Rust Windows Hypervisor Platform API
 """
