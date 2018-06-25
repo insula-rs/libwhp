@@ -53,7 +53,7 @@ impl Partition {
         })
     }
 
-    pub fn set_partition_property(
+    pub fn set_property(
         &mut self,
         property_code: WHV_PARTITION_PROPERTY_CODE,
         property: &WHV_PARTITION_PROPERTY,
@@ -69,7 +69,7 @@ impl Partition {
         Ok(())
     }
 
-    pub fn get_partition_property(
+    pub fn get_property(
         &mut self,
         property_code: WHV_PARTITION_PROPERTY_CODE,
     ) -> Result<WHV_PARTITION_PROPERTY, HRESULT> {
@@ -233,8 +233,8 @@ mod tests {
         let mut property: WHV_PARTITION_PROPERTY = unsafe { std::mem::zeroed() };
         property.ProcessorCount = 1;
 
-        p.set_partition_property(property_code, &property).unwrap();
-        let property_out = p.get_partition_property(property_code).unwrap();
+        p.set_property(property_code, &property).unwrap();
+        let property_out = p.get_property(property_code).unwrap();
 
         unsafe {
             assert_eq!(
@@ -251,7 +251,7 @@ mod tests {
         property.ProcessorCount = 1;
 
         // Setup fails without setting at least the number of vcpus
-        p.set_partition_property(
+        p.set_property(
             WHV_PARTITION_PROPERTY_CODE::WHvPartitionPropertyCodeProcessorCount,
             &property,
         ).unwrap();
@@ -271,7 +271,7 @@ mod tests {
         let mut property: WHV_PARTITION_PROPERTY = unsafe { std::mem::zeroed() };
         property.ProcessorCount = 1;
 
-        p.set_partition_property(
+        p.set_property(
             WHV_PARTITION_PROPERTY_CODE::WHvPartitionPropertyCodeProcessorCount,
             &property,
         ).unwrap();
