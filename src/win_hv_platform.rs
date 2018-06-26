@@ -168,36 +168,6 @@ mod tests {
     }
 
     #[test]
-    fn test_data_type_sizes() {
-        // Make sure all unions and structs have a size that matches the value
-        // obtained with a sizeof() in C.
-        assert_eq!(std::mem::size_of::<WHV_CAPABILITY>(), 8);
-        assert_eq!(std::mem::size_of::<WHV_X64_CPUID_RESULT>(), 32);
-        assert_eq!(std::mem::size_of::<WHV_PARTITION_PROPERTY>(), 32);
-        assert_eq!(std::mem::size_of::<WHV_X64_SEGMENT_REGISTER>(), 16);
-        assert_eq!(std::mem::size_of::<WHV_X64_TABLE_REGISTER>(), 16);
-        assert_eq!(std::mem::size_of::<WHV_VP_EXIT_CONTEXT>(), 40);
-        assert_eq!(std::mem::size_of::<WHV_MEMORY_ACCESS_CONTEXT>(), 40);
-        assert_eq!(std::mem::size_of::<WHV_X64_IO_PORT_ACCESS_CONTEXT>(), 96);
-        assert_eq!(std::mem::size_of::<WHV_X64_MSR_ACCESS_CONTEXT>(), 24);
-        assert_eq!(std::mem::size_of::<WHV_X64_CPUID_ACCESS_CONTEXT>(), 64);
-        assert_eq!(std::mem::size_of::<WHV_VP_EXCEPTION_CONTEXT>(), 40);
-        assert_eq!(
-            std::mem::size_of::<WHV_X64_INTERRUPTION_DELIVERABLE_CONTEXT>(),
-            4
-        );
-        assert_eq!(
-            std::mem::size_of::<WHV_X64_UNSUPPORTED_FEATURE_CONTEXT>(),
-            16
-        );
-        assert_eq!(std::mem::size_of::<WHV_RUN_VP_CANCELED_CONTEXT>(), 4);
-        assert_eq!(std::mem::size_of::<WHV_RUN_VP_EXIT_CONTEXT>(), 144);
-        assert_eq!(std::mem::size_of::<WHV_UINT128>(), 16);
-        assert_eq!(std::mem::size_of::<WHV_REGISTER_VALUE>(), 16);
-        assert_eq!(std::mem::size_of::<WHV_TRANSLATE_GVA_RESULT>(), 8);
-    }
-
-    #[test]
     fn test_get_capability() {
         let mut capability: WHV_CAPABILITY;
         let mut written_size: UINT32 = 0;
