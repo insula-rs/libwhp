@@ -12,8 +12,10 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
+use common_defs::*;
 use std;
 use win_hv_platform::*;
+use win_hv_platform_defs::*;
 
 // TODO (alexpilotti): transform into a macro
 fn check_result(res: HRESULT) -> Result<(), HRESULT> {
