@@ -13,6 +13,7 @@
 // under the License.
 
 #![allow(non_camel_case_types)]
+#![allow(non_upper_case_globals)]
 
 use common_defs::*;
 
@@ -101,15 +102,6 @@ pub enum WHV_X64_UNSUPPORTED_FEATURE_CODE {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum WHV_RUN_VP_CANCEL_REASON {
     WhvRunVpCancelReasonUser = 0, // Execution canceled by HvCancelRunVirtualProcessor
-}
-
-#[repr(C)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum WHV_MAP_GPA_RANGE_FLAGS {
-    WHvMapGpaRangeFlagNone = 0x00000000,
-    WHvMapGpaRangeFlagRead = 0x00000001,
-    WHvMapGpaRangeFlagWrite = 0x00000002,
-    WHvMapGpaRangeFlagExecute = 0x00000004,
 }
 
 #[repr(C)]
@@ -267,17 +259,6 @@ pub enum WHV_REGISTER_NAME {
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum WHV_TRANSLATE_GVA_FLAGS {
-    WHvTranslateGvaFlagNone = 0x00000000,
-    WHvTranslateGvaFlagValidateRead = 0x00000001,
-    WHvTranslateGvaFlagValidateWrite = 0x00000002,
-    WHvTranslateGvaFlagValidateExecute = 0x00000004,
-    WHvTranslateGvaFlagPrivilegeExempt = 0x00000008,
-    WHvTranslateGvaFlagSetPageTableBits = 0x00000010,
-}
-
-#[repr(C)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum WHV_TRANSLATE_GVA_RESULT_CODE {
     WHvTranslateGvaResultSuccess = 0,
 
@@ -292,6 +273,28 @@ pub enum WHV_TRANSLATE_GVA_RESULT_CODE {
     WHvTranslateGvaResultGpaNoWriteAccess = 6,
     WHvTranslateGvaResultGpaIllegalOverlayAccess = 7,
     WHvTranslateGvaResultIntercept = 8,
+}
+
+bitflags! {
+    #[repr(C)]
+    pub struct WHV_TRANSLATE_GVA_FLAGS: UINT32 {
+        const WHvTranslateGvaFlagNone = 0x00000000;
+        const WHvTranslateGvaFlagValidateRead = 0x00000001;
+        const WHvTranslateGvaFlagValidateWrite = 0x00000002;
+        const WHvTranslateGvaFlagValidateExecute = 0x00000004;
+        const WHvTranslateGvaFlagPrivilegeExempt = 0x00000008;
+        const WHvTranslateGvaFlagSetPageTableBits = 0x00000010;
+    }
+}
+
+bitflags! {
+    #[repr(C)]
+    pub struct WHV_MAP_GPA_RANGE_FLAGS: UINT32  {
+        const WHvMapGpaRangeFlagNone = 0x00000000;
+        const WHvMapGpaRangeFlagRead = 0x00000001;
+        const WHvMapGpaRangeFlagWrite = 0x00000002;
+        const WHvMapGpaRangeFlagExecute = 0x00000004;
+    }
 }
 
 #[allow(non_snake_case)]

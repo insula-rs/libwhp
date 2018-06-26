@@ -409,7 +409,8 @@ mod tests {
                     source_address.as_ptr() as *const VOID,
                     guest_address,
                     SIZE,
-                    WHV_MAP_GPA_RANGE_FLAGS::WHvMapGpaRangeFlagRead,
+                    WHV_MAP_GPA_RANGE_FLAGS::WHvMapGpaRangeFlagRead
+                        | WHV_MAP_GPA_RANGE_FLAGS::WHvMapGpaRangeFlagWrite,
                 )
             };
 

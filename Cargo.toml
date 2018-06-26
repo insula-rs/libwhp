@@ -12,6 +12,7 @@ Rust Windows Hypervisor Platform API
 
 [dependencies]
 libc = "0.2"
+bitflags = "1.0"
 
 [lib]
 crate-type = ["dylib"]
