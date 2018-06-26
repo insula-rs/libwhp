@@ -16,5 +16,7 @@ extern crate libc;
 
 pub mod common_defs;
 pub mod whp;
+mod win_hv_emulation;
+pub mod win_hv_emulation_defs;
 mod win_hv_platform;
 pub mod win_hv_platform_defs;
