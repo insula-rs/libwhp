@@ -10,8 +10,9 @@ of the native Windows Hypervisor Platform (WHP) API.
 ```
 extern crate libwhp;
 
+use libwhp::common_defs::*;
 use libwhp::whp::*;
-use libwhp::win_hv_platform::*;
+use libwhp::win_hv_platform_defs::*;
 
 fn main() {
     let p: Partition = Partition::new().unwrap();
