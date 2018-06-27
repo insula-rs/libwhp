@@ -17,14 +17,6 @@ use std;
 use win_hv_platform::*;
 use win_hv_platform_defs::*;
 
-// TODO (alexpilotti): transform into a macro
-fn check_result(res: HRESULT) -> Result<(), HRESULT> {
-    match res {
-        S_OK => Ok(()),
-        _ => Err(res),
-    }
-}
-
 pub fn get_capability(capability_code: WHV_CAPABILITY_CODE) -> Result<WHV_CAPABILITY, HRESULT> {
     let mut capability: WHV_CAPABILITY;
     let mut written_size: UINT32 = 0;
@@ -241,17 +233,6 @@ impl<'a> Drop for VirtualProcessor<'a> {
 mod tests {
     use super::*;
     use std;
-
-    #[test]
-    fn test_check_result_ok() {
-        check_result(S_OK).unwrap();
-    }
-
-    #[test]
-    #[should_panic]
-    fn test_check_result_fail() {
-        check_result(E_INVALIDARG).unwrap();
-    }
 
     #[test]
     fn test_create_delete_partition() {

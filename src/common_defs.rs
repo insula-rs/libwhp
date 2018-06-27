@@ -26,3 +26,27 @@ pub type UINT16 = c_ushort;
 
 pub const S_OK: HRESULT = 0;
 pub const E_INVALIDARG: HRESULT = -2147024809; // 0x80070057
+
+// TODO (alexpilotti): transform into a macro
+pub fn check_result(res: HRESULT) -> Result<(), HRESULT> {
+    match res {
+        S_OK => Ok(()),
+        _ => Err(res),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_check_result_ok() {
+        check_result(S_OK).unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_check_result_fail() {
+        check_result(E_INVALIDARG).unwrap();
+    }
+}

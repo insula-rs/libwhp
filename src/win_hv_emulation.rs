@@ -18,6 +18,53 @@ use common_defs::*;
 use win_hv_emulation_defs::*;
 use win_hv_platform_defs::*;
 
+pub type WHV_EMULATOR_IO_PORT_CALLBACK =
+    extern "stdcall" fn(Context: *mut VOID, IoAccess: *mut WHV_EMULATOR_IO_ACCESS_INFO) -> HRESULT;
+
+pub type WHV_EMULATOR_MEMORY_CALLBACK =
+    extern "stdcall" fn(Context: *mut VOID, MemoryAccess: *mut WHV_EMULATOR_MEMORY_ACCESS_INFO)
+        -> HRESULT;
+
+pub type WHV_EMULATOR_GET_VIRTUAL_PROCESSOR_REGISTERS_CALLBACK =
+    extern "stdcall" fn(
+        Context: *mut VOID,
+        RegisterNames: *const WHV_REGISTER_NAME,
+        RegisterCount: UINT32,
+        RegisterValues: *mut WHV_REGISTER_VALUE,
+    ) -> HRESULT;
+
+pub type WHV_EMULATOR_SET_VIRTUAL_PROCESSOR_REGISTERS_CALLBACK =
+    extern "stdcall" fn(
+        Context: *mut VOID,
+        RegisterNames: *const WHV_REGISTER_NAME,
+        RegisterCount: UINT32,
+        RegisterValues: *const WHV_REGISTER_VALUE,
+    ) -> HRESULT;
+
+pub type WHV_EMULATOR_TRANSLATE_GVA_PAGE_CALLBACK =
+    extern "stdcall" fn(
+        Context: *mut VOID,
+        Gva: WHV_GUEST_VIRTUAL_ADDRESS,
+        TranslateFlags: WHV_TRANSLATE_GVA_FLAGS,
+        TranslationResult: *mut WHV_TRANSLATE_GVA_RESULT_CODE,
+        Gpa: *mut WHV_GUEST_PHYSICAL_ADDRESS,
+    ) -> HRESULT;
+
+#[derive(Copy, Clone)]
+#[allow(non_snake_case)]
+#[repr(C)]
+pub struct WHV_EMULATOR_CALLBACKS {
+    pub Size: UINT32,
+    pub Reserved: UINT32,
+    pub WHvEmulatorIoPortCallback: WHV_EMULATOR_IO_PORT_CALLBACK,
+    pub WHvEmulatorMemoryCallback: WHV_EMULATOR_MEMORY_CALLBACK,
+    pub WHvEmulatorGetVirtualProcessorRegisters:
+        WHV_EMULATOR_GET_VIRTUAL_PROCESSOR_REGISTERS_CALLBACK,
+    pub WHvEmulatorSetVirtualProcessorRegisters:
+        WHV_EMULATOR_SET_VIRTUAL_PROCESSOR_REGISTERS_CALLBACK,
+    pub WHvEmulatorTranslateGvaPage: WHV_EMULATOR_TRANSLATE_GVA_PAGE_CALLBACK,
+}
+
 #[allow(non_snake_case)]
 #[link(name = "WinHvEmulation")]
 extern "stdcall" {
@@ -28,14 +75,14 @@ extern "stdcall" {
     pub fn WHvEmulatorDestroyEmulator(Emulator: WHV_EMULATOR_HANDLE) -> HRESULT;
     pub fn WHvEmulatorTryIoEmulation(
         Emulator: WHV_EMULATOR_HANDLE,
-        Context: *const VOID,
+        Context: *mut VOID,
         VpContext: *const WHV_VP_EXIT_CONTEXT,
         IoInstructionContext: *mut WHV_X64_IO_PORT_ACCESS_CONTEXT,
         EmulatorReturnStatus: *mut WHV_EMULATOR_STATUS,
     ) -> HRESULT;
     pub fn WHvEmulatorTryMmioEmulation(
         Emulator: WHV_EMULATOR_HANDLE,
-        Context: *const VOID,
+        Context: *mut VOID,
         VpContext: *const WHV_VP_EXIT_CONTEXT,
         MmioInstructionContext: *const WHV_MEMORY_ACCESS_CONTEXT,
         EmulatorReturnStatus: *mut WHV_EMULATOR_STATUS,
@@ -48,21 +95,21 @@ mod tests {
     use std;
 
     extern "stdcall" fn io_port_cb(
-        _context: *const VOID,
+        _context: *mut VOID,
         _io_access: *mut WHV_EMULATOR_IO_ACCESS_INFO,
     ) -> HRESULT {
         S_OK
     }
 
     extern "stdcall" fn memory_cb(
-        _context: *const VOID,
+        _context: *mut VOID,
         _memory_access: *mut WHV_EMULATOR_MEMORY_ACCESS_INFO,
     ) -> HRESULT {
         S_OK
     }
 
     extern "stdcall" fn get_vp_registers_cb(
-        _context: *const VOID,
+        _context: *mut VOID,
         _register_names: *const WHV_REGISTER_NAME,
         _register_count: UINT32,
         _register_values: *mut WHV_REGISTER_VALUE,
@@ -71,7 +118,7 @@ mod tests {
     }
 
     extern "stdcall" fn set_vp_registers_cb(
-        _context: *const VOID,
+        _context: *mut VOID,
         _register_names: *const WHV_REGISTER_NAME,
         _register_count: UINT32,
         _register_values: *const WHV_REGISTER_VALUE,
@@ -80,7 +127,7 @@ mod tests {
     }
 
     extern "stdcall" fn translate_gva_page_cb(
-        _context: *const VOID,
+        _context: *mut VOID,
         _gva: WHV_GUEST_VIRTUAL_ADDRESS,
         _translate_flags: WHV_TRANSLATE_GVA_FLAGS,
         _translation_result: *mut WHV_TRANSLATE_GVA_RESULT_CODE,
@@ -132,7 +179,7 @@ mod tests {
         with_emulator(|emulator| {
             let context = std::ptr::null_mut();
             let mut vp_context: WHV_VP_EXIT_CONTEXT = unsafe { std::mem::zeroed() };
-            let mut x64_io_port_access_context: WHV_X64_IO_PORT_ACCESS_CONTEXT =
+            let mut io_instruction_context: WHV_X64_IO_PORT_ACCESS_CONTEXT =
                 unsafe { std::mem::zeroed() };
             let mut emulator_status: WHV_EMULATOR_STATUS = unsafe { std::mem::zeroed() };
 
@@ -144,7 +191,7 @@ mod tests {
                     emulator,
                     context,
                     &vp_context,
-                    &mut x64_io_port_access_context,
+                    &mut io_instruction_context,
                     &mut emulator_status,
                 )
             };
@@ -181,5 +228,12 @@ mod tests {
                 result
             );
         });
+    }
+
+    #[test]
+    fn test_data_type_sizes() {
+        // Make sure all unions and structs have a size that matches the value
+        // obtained with a sizeof() in C.
+        assert_eq!(std::mem::size_of::<WHV_EMULATOR_CALLBACKS>(), 48);
     }
 }
