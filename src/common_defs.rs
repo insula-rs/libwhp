@@ -25,6 +25,7 @@ pub type BOOL = c_int;
 pub type UINT16 = c_ushort;
 
 pub const S_OK: HRESULT = 0;
+pub const E_FAIL: HRESULT = -2147467259; // 0x80004005;
 pub const E_INVALIDARG: HRESULT = -2147024809; // 0x80070057
 
 // TODO (alexpilotti): transform into a macro
