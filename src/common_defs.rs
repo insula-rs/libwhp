@@ -14,6 +14,8 @@
 
 #![allow(non_camel_case_types)]
 
+use std::error::Error;
+use std::fmt;
 use std::os::raw::{c_int, c_longlong, c_uchar, c_uint, c_ushort, c_void};
 
 pub type HRESULT = c_int;
@@ -28,11 +30,38 @@ pub const S_OK: HRESULT = 0;
 pub const E_FAIL: HRESULT = -2147467259; // 0x80004005;
 pub const E_INVALIDARG: HRESULT = -2147024809; // 0x80070057
 
+#[derive(Debug)]
+pub struct WHPError {
+    result: HRESULT,
+}
+
+impl WHPError {
+    pub fn new(result: HRESULT) -> WHPError {
+        WHPError { result: result }
+    }
+
+    pub fn result(&self) -> HRESULT {
+        self.result
+    }
+}
+
+impl Error for WHPError {
+    fn description(&self) -> &str {
+        "WHP error"
+    }
+}
+
+impl fmt::Display for WHPError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "WHP error code: 0x{:X}", self.result)
+    }
+}
+
 // TODO (alexpilotti): transform into a macro
-pub fn check_result(res: HRESULT) -> Result<(), HRESULT> {
+pub fn check_result(res: HRESULT) -> Result<(), WHPError> {
     match res {
         S_OK => Ok(()),
-        _ => Err(res),
+        _ => Err(WHPError::new(res)),
     }
 }
 

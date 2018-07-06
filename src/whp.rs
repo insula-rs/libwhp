@@ -17,7 +17,7 @@ use std;
 use win_hv_platform::*;
 use win_hv_platform_defs::*;
 
-pub fn get_capability(capability_code: WHV_CAPABILITY_CODE) -> Result<WHV_CAPABILITY, HRESULT> {
+pub fn get_capability(capability_code: WHV_CAPABILITY_CODE) -> Result<WHV_CAPABILITY, WHPError> {
     let mut capability: WHV_CAPABILITY;
     let mut written_size: UINT32 = 0;
 
@@ -39,7 +39,7 @@ pub struct Partition {
 }
 
 impl Partition {
-    pub fn new() -> Result<Partition, HRESULT> {
+    pub fn new() -> Result<Partition, WHPError> {
         let mut partition: WHV_PARTITION_HANDLE = std::ptr::null_mut();
         check_result(unsafe { WHvCreatePartition(&mut partition) })?;
         Ok(Partition {
@@ -51,7 +51,7 @@ impl Partition {
         &self,
         property_code: WHV_PARTITION_PROPERTY_CODE,
         property: &WHV_PARTITION_PROPERTY,
-    ) -> Result<(), HRESULT> {
+    ) -> Result<(), WHPError> {
         check_result(unsafe {
             WHvSetPartitionProperty(
                 self.partition,
@@ -66,7 +66,7 @@ impl Partition {
     pub fn get_property(
         &self,
         property_code: WHV_PARTITION_PROPERTY_CODE,
-    ) -> Result<WHV_PARTITION_PROPERTY, HRESULT> {
+    ) -> Result<WHV_PARTITION_PROPERTY, WHPError> {
         let mut property: WHV_PARTITION_PROPERTY = unsafe { std::mem::zeroed() };
         let mut written_size: UINT32 = 0;
 
@@ -82,12 +82,12 @@ impl Partition {
         Ok(property)
     }
 
-    pub fn setup(&self) -> Result<(), HRESULT> {
+    pub fn setup(&self) -> Result<(), WHPError> {
         check_result(unsafe { WHvSetupPartition(self.partition) })?;
         Ok(())
     }
 
-    pub fn create_virtual_processor(&self, index: UINT32) -> Result<VirtualProcessor, HRESULT> {
+    pub fn create_virtual_processor(&self, index: UINT32) -> Result<VirtualProcessor, WHPError> {
         check_result(unsafe { WHvCreateVirtualProcessor(self.partition, index, 0) })?;
         Ok(VirtualProcessor {
             partition: &self.partition,
@@ -101,7 +101,7 @@ impl Partition {
         guest_address: WHV_GUEST_PHYSICAL_ADDRESS,
         size: UINT64,
         flags: WHV_MAP_GPA_RANGE_FLAGS,
-    ) -> Result<(), HRESULT> {
+    ) -> Result<(), WHPError> {
         check_result(unsafe {
             WHvMapGpaRange(self.partition, source_address, guest_address, size, flags)
         })?;
@@ -112,7 +112,7 @@ impl Partition {
         &self,
         guest_address: WHV_GUEST_PHYSICAL_ADDRESS,
         size: UINT64,
-    ) -> Result<(), HRESULT> {
+    ) -> Result<(), WHPError> {
         check_result(unsafe { WHvUnmapGpaRange(self.partition, guest_address, size) })?;
         Ok(())
     }
@@ -134,7 +134,7 @@ impl<'a> VirtualProcessor<'a> {
         return self.index;
     }
 
-    pub fn run(&self) -> Result<WHV_RUN_VP_EXIT_CONTEXT, HRESULT> {
+    pub fn run(&self) -> Result<WHV_RUN_VP_EXIT_CONTEXT, WHPError> {
         let mut exit_context: WHV_RUN_VP_EXIT_CONTEXT = unsafe { std::mem::zeroed() };
         let exit_context_size = std::mem::size_of::<WHV_RUN_VP_EXIT_CONTEXT>() as UINT32;
 
@@ -149,7 +149,7 @@ impl<'a> VirtualProcessor<'a> {
         Ok(exit_context)
     }
 
-    pub fn cancel_run(&self) -> Result<(), HRESULT> {
+    pub fn cancel_run(&self) -> Result<(), WHPError> {
         check_result(unsafe { WHvCancelRunVirtualProcessor(*self.partition, self.index, 0) })?;
         Ok(())
     }
@@ -158,7 +158,7 @@ impl<'a> VirtualProcessor<'a> {
         &self,
         reg_names: &[WHV_REGISTER_NAME],
         reg_values: &[WHV_REGISTER_VALUE],
-    ) -> Result<(), HRESULT> {
+    ) -> Result<(), WHPError> {
         let num_regs = reg_names.len();
 
         if num_regs != reg_values.len() {
@@ -182,7 +182,7 @@ impl<'a> VirtualProcessor<'a> {
         &self,
         reg_names: &[WHV_REGISTER_NAME],
         reg_values: &mut [WHV_REGISTER_VALUE],
-    ) -> Result<(), HRESULT> {
+    ) -> Result<(), WHPError> {
         let num_regs = reg_names.len();
 
         if num_regs != reg_values.len() {
@@ -205,7 +205,7 @@ impl<'a> VirtualProcessor<'a> {
         &self,
         gva: WHV_GUEST_VIRTUAL_ADDRESS,
         flags: WHV_TRANSLATE_GVA_FLAGS,
-    ) -> Result<(WHV_TRANSLATE_GVA_RESULT, WHV_GUEST_PHYSICAL_ADDRESS), HRESULT> {
+    ) -> Result<(WHV_TRANSLATE_GVA_RESULT, WHV_GUEST_PHYSICAL_ADDRESS), WHPError> {
         let mut gpa: WHV_GUEST_PHYSICAL_ADDRESS = 0;
         let mut translation_result: WHV_TRANSLATE_GVA_RESULT = unsafe { std::mem::zeroed() };
 
@@ -292,7 +292,11 @@ mod tests {
     fn test_setup_partition_fail() {
         let p: Partition = Partition::new().unwrap();
         match p.setup() {
-            Err(e) => assert_eq!(e, WHV_E_INVALID_PARTITION_CONFIG, "Unexpected error code"),
+            Err(e) => assert_eq!(
+                e.result(),
+                WHV_E_INVALID_PARTITION_CONFIG,
+                "Unexpected error code"
+            ),
             Ok(()) => panic!("An error was expected"),
         }
     }
@@ -387,7 +391,7 @@ mod tests {
             SIZE,
             WHV_MAP_GPA_RANGE_FLAGS::WHvMapGpaRangeFlagRead,
         ) {
-            Err(E_INVALIDARG) => {}
+            Err(ref e) if e.result() == E_INVALIDARG => {}
             _ => panic!("Should have failed with E_INVALIDARG"),
         }
     }
@@ -399,7 +403,7 @@ mod tests {
         let guest_address: WHV_GUEST_PHYSICAL_ADDRESS = 0;
 
         match p.unmap_gpa_range(guest_address, SIZE) {
-            Err(WHV_E_GPA_RANGE_NOT_FOUND) => {}
+            Err(ref e) if e.result() == WHV_E_GPA_RANGE_NOT_FOUND => {}
             _ => panic!("Should have failed with WHV_E_GPA_RANGE_NOT_FOUND"),
         }
     }

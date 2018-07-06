@@ -66,7 +66,7 @@ impl<'a, T: 'a> Emulator<'a, T>
 where
     T: EmulatorCallbacks,
 {
-    pub fn new(callbacks: &mut T) -> Result<Emulator<T>, HRESULT> {
+    pub fn new(callbacks: &mut T) -> Result<Emulator<T>, WHPError> {
         let mut emulator: WHV_EMULATOR_HANDLE = std::ptr::null_mut();
 
         let native_callbacks = WHV_EMULATOR_CALLBACKS {
@@ -172,7 +172,7 @@ where
         context: *mut VOID,
         vp_context: &WHV_VP_EXIT_CONTEXT,
         io_instruction_context: &mut WHV_X64_IO_PORT_ACCESS_CONTEXT,
-    ) -> Result<WHV_EMULATOR_STATUS, HRESULT> {
+    ) -> Result<WHV_EMULATOR_STATUS, WHPError> {
         let mut callbacks_context = CallbacksContext {
             callbacks: self.callbacks,
             context: context,
@@ -196,7 +196,7 @@ where
         context: *mut VOID,
         vp_context: &WHV_VP_EXIT_CONTEXT,
         mmio_instruction_context: &WHV_MEMORY_ACCESS_CONTEXT,
-    ) -> Result<WHV_EMULATOR_STATUS, HRESULT> {
+    ) -> Result<WHV_EMULATOR_STATUS, WHPError> {
         let mut callbacks_context = CallbacksContext {
             callbacks: self.callbacks,
             context: context,
