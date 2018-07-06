@@ -14,13 +14,16 @@
 
 extern crate libc;
 
-pub mod common;
-pub mod whp;
-pub mod whp_emulator;
+mod common;
+pub mod instruction_emulator;
+mod platform;
 mod win_hv_emulation;
-pub mod win_hv_emulation_defs;
+mod win_hv_emulation_defs;
 mod win_hv_platform;
-pub mod win_hv_platform_defs;
+mod win_hv_platform_defs;
+
+pub use common::*;
+pub use platform::*;
 
 #[macro_use]
 extern crate bitflags;

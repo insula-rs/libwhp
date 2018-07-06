@@ -15,7 +15,7 @@
 use common::*;
 use std;
 use win_hv_emulation::*;
-use win_hv_emulation_defs::*;
+pub use win_hv_emulation_defs::*;
 use win_hv_platform_defs::*;
 
 pub trait EmulatorCallbacks {

@@ -15,7 +15,7 @@
 use common::*;
 use std;
 use win_hv_platform::*;
-use win_hv_platform_defs::*;
+pub use win_hv_platform_defs::*;
 
 pub fn get_capability(capability_code: WHV_CAPABILITY_CODE) -> Result<WHV_CAPABILITY, WHPError> {
     let mut capability: WHV_CAPABILITY;
