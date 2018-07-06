@@ -20,7 +20,7 @@ use win_hv_platform_defs::*;
 pub type WHV_EMULATOR_HANDLE = *mut VOID;
 pub type WHV_EMULATOR_STATUS = UINT32;
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[allow(non_snake_case)]
 #[repr(C)]
 pub struct WHV_EMULATOR_MEMORY_ACCESS_INFO {
@@ -30,7 +30,7 @@ pub struct WHV_EMULATOR_MEMORY_ACCESS_INFO {
     pub Data: [UINT8; 8],
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[allow(non_snake_case)]
 #[repr(C)]
 pub struct WHV_EMULATOR_IO_ACCESS_INFO {

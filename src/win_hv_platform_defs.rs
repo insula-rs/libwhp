@@ -314,7 +314,7 @@ pub union WHV_CAPABILITY {
 }
 
 #[allow(non_snake_case)]
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[repr(C)]
 pub struct WHV_X64_CPUID_RESULT {
     pub Function: UINT32,
@@ -339,7 +339,7 @@ pub union WHV_PARTITION_PROPERTY {
     pub ExceptionExitBitmap: UINT64,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[allow(non_snake_case)]
 #[repr(C)]
 pub struct WHV_X64_SEGMENT_REGISTER {
@@ -350,7 +350,7 @@ pub struct WHV_X64_SEGMENT_REGISTER {
     pub Attributes: UINT16,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[allow(non_snake_case)]
 #[repr(C)]
 pub struct WHV_X64_TABLE_REGISTER {
@@ -359,6 +359,7 @@ pub struct WHV_X64_TABLE_REGISTER {
     pub Base: UINT64,
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[allow(non_snake_case)]
 #[repr(C)]
 pub struct WHV_VP_EXIT_CONTEXT {
@@ -374,7 +375,7 @@ pub struct WHV_VP_EXIT_CONTEXT {
     pub Rflags: UINT64,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[allow(non_snake_case)]
 #[repr(C)]
 pub struct WHV_MEMORY_ACCESS_CONTEXT {
@@ -390,7 +391,7 @@ pub struct WHV_MEMORY_ACCESS_CONTEXT {
     pub Gva: WHV_GUEST_VIRTUAL_ADDRESS,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[allow(non_snake_case)]
 #[repr(C)]
 pub struct WHV_X64_IO_PORT_ACCESS_CONTEXT {
@@ -412,7 +413,7 @@ pub struct WHV_X64_IO_PORT_ACCESS_CONTEXT {
     pub Es: WHV_X64_SEGMENT_REGISTER,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[allow(non_snake_case)]
 #[repr(C)]
 pub struct WHV_X64_MSR_ACCESS_CONTEXT {
@@ -424,7 +425,7 @@ pub struct WHV_X64_MSR_ACCESS_CONTEXT {
     pub Rdx: UINT64,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[allow(non_snake_case)]
 #[repr(C)]
 pub struct WHV_X64_CPUID_ACCESS_CONTEXT {
@@ -439,7 +440,7 @@ pub struct WHV_X64_CPUID_ACCESS_CONTEXT {
     pub DefaultResultRbx: UINT64,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[allow(non_snake_case)]
 #[repr(C)]
 pub struct WHV_VP_EXCEPTION_CONTEXT {
@@ -457,14 +458,14 @@ pub struct WHV_VP_EXCEPTION_CONTEXT {
     pub ExceptionParameter: UINT64,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[allow(non_snake_case)]
 #[repr(C)]
 pub struct WHV_X64_INTERRUPTION_DELIVERABLE_CONTEXT {
     pub DeliverableType: WHV_X64_PENDING_INTERRUPTION_TYPE,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[allow(non_snake_case)]
 #[repr(C)]
 pub struct WHV_X64_UNSUPPORTED_FEATURE_CONTEXT {
@@ -473,7 +474,7 @@ pub struct WHV_X64_UNSUPPORTED_FEATURE_CONTEXT {
     pub FeatureParameter: UINT64,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[allow(non_snake_case)]
 #[repr(C)]
 pub struct WHV_RUN_VP_CANCELED_CONTEXT {
@@ -494,6 +495,7 @@ pub union WHV_RUN_VP_EXIT_CONTEXT_anon_union {
     pub CancelReason: WHV_RUN_VP_CANCELED_CONTEXT,
 }
 
+#[derive(Copy, Clone)]
 #[allow(non_snake_case)]
 #[repr(C)]
 pub struct WHV_RUN_VP_EXIT_CONTEXT {
@@ -503,7 +505,7 @@ pub struct WHV_RUN_VP_EXIT_CONTEXT {
     pub anon_union: WHV_RUN_VP_EXIT_CONTEXT_anon_union,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[allow(non_snake_case)]
 #[repr(C)]
 pub struct WHV_UINT128 {
@@ -538,6 +540,7 @@ pub union WHV_REGISTER_VALUE {
     pub DeliverabilityNotifications: UINT64,
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[allow(non_snake_case)]
 #[repr(C)]
 pub struct WHV_TRANSLATE_GVA_RESULT {
