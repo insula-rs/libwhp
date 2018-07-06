@@ -14,7 +14,7 @@
 
 #![allow(non_camel_case_types)]
 
-use common_defs::*;
+use common::*;
 use win_hv_emulation_defs::*;
 use win_hv_platform_defs::*;
 

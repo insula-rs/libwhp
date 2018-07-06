@@ -12,7 +12,7 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-use common_defs::*;
+use common::*;
 use std;
 use win_hv_emulation::*;
 use win_hv_emulation_defs::*;
