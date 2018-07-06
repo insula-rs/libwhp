@@ -275,6 +275,28 @@ pub enum WHV_TRANSLATE_GVA_RESULT_CODE {
     WHvTranslateGvaResultIntercept = 8,
 }
 
+#[repr(C)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum WHV_EXCEPTION_TYPE {
+    WHvX64ExceptionTypeDivideErrorFault = 0x0,
+    WHvX64ExceptionTypeDebugTrapOrFault = 0x1,
+    WHvX64ExceptionTypeBreakpointTrap = 0x3,
+    WHvX64ExceptionTypeOverflowTrap = 0x4,
+    WHvX64ExceptionTypeBoundRangeFault = 0x5,
+    WHvX64ExceptionTypeInvalidOpcodeFault = 0x6,
+    WHvX64ExceptionTypeDeviceNotAvailableFault = 0x7,
+    WHvX64ExceptionTypeDoubleFaultAbort = 0x8,
+    WHvX64ExceptionTypeInvalidTaskStateSegmentFault = 0x0A,
+    WHvX64ExceptionTypeSegmentNotPresentFault = 0x0B,
+    WHvX64ExceptionTypeStackFault = 0x0C,
+    WHvX64ExceptionTypeGeneralProtectionFault = 0x0D,
+    WHvX64ExceptionTypePageFault = 0x0E,
+    WHvX64ExceptionTypeFloatingPointErrorFault = 0x10,
+    WHvX64ExceptionTypeAlignmentCheckFault = 0x11,
+    WHvX64ExceptionTypeMachineCheckAbort = 0x12,
+    WHvX64ExceptionTypeSimdFloatingPointFault = 0x13,
+}
+
 bitflags! {
     #[repr(C)]
     pub struct WHV_TRANSLATE_GVA_FLAGS: UINT32 {
