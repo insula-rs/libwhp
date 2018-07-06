@@ -297,6 +297,14 @@ pub enum WHV_EXCEPTION_TYPE {
     WHvX64ExceptionTypeSimdFloatingPointFault = 0x13,
 }
 
+#[repr(C)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum WHV_MEMORY_ACCESS_TYPE {
+    WHvMemoryAccessRead = 0,
+    WHvMemoryAccessWrite = 1,
+    WHvMemoryAccessExecute = 2,
+}
+
 bitflags! {
     #[repr(C)]
     pub struct WHV_TRANSLATE_GVA_FLAGS: UINT32 {
