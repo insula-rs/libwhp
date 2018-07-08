@@ -31,6 +31,7 @@ pub const TRUE: i32 = 1;
 
 pub const S_OK: HRESULT = 0;
 pub const E_FAIL: HRESULT = -2147467259; // 0x80004005;
+pub const ERROR_HV_NOT_PRESENT: HRESULT = -1070264320; // 0xC0351000
 pub const E_INVALIDARG: HRESULT = -2147024809; // 0x80070057
 
 #[derive(Debug)]
