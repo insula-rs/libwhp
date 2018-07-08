@@ -100,10 +100,41 @@ mod tests {
     use super::*;
     use std;
 
+    fn check_hypervisor_present() {
+        let mut capability: WHV_CAPABILITY;
+        let mut written_size: UINT32 = 0;
+
+        let result = unsafe {
+            capability = std::mem::zeroed();
+
+            WHvGetCapability(
+                WHV_CAPABILITY_CODE::WHvCapabilityCodeHypervisorPresent,
+                &mut capability as *mut _ as *mut VOID,
+                std::mem::size_of::<WHV_CAPABILITY>() as UINT32,
+                &mut written_size,
+            )
+        };
+
+        assert_eq!(result, S_OK, "WHvGetCapability failed with 0x{:X}", result);
+
+        assert_eq!(
+            std::mem::size_of::<BOOL>() as UINT32,
+            written_size,
+            "WrittenSizeInBytes does not match BOOL size {}",
+            written_size
+        );
+
+        unsafe {
+            assert_eq!(capability.HypervisorPresent, TRUE, "Hypervisor not present");
+        };
+    }
+
     fn with_partition<F>(action: F)
     where
         F: Fn(WHV_PARTITION_HANDLE),
     {
+        check_hypervisor_present();
+
         let mut part: WHV_PARTITION_HANDLE = std::ptr::null_mut();
 
         let result = unsafe { WHvCreatePartition(&mut part) };
