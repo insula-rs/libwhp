@@ -207,7 +207,7 @@ mod tests {
             capability = std::mem::zeroed();
 
             WHvGetCapability(
-                WHV_CAPABILITY_CODE::WHvCapabilityCodeHypervisorPresent,
+                WHV_CAPABILITY_CODE::WHvCapabilityCodeFeatures,
                 &mut capability as *mut _ as *mut VOID,
                 std::mem::size_of::<WHV_CAPABILITY>() as UINT32,
                 &mut written_size,
@@ -216,9 +216,9 @@ mod tests {
 
         assert_eq!(result, S_OK, "WHvGetCapability failed with 0x{:X}", result);
         assert_eq!(
-            std::mem::size_of::<BOOL>() as UINT32,
+            std::mem::size_of::<UINT64>() as UINT32,
             written_size,
-            "WrittenSizeInBytes does not match BOOL size {}",
+            "WrittenSizeInBytes does not match UINT64 size {}",
             written_size
         );
     }
