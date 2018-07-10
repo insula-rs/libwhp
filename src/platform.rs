@@ -52,13 +52,22 @@ impl Partition {
         property_code: WHV_PARTITION_PROPERTY_CODE,
         property: &WHV_PARTITION_PROPERTY,
     ) -> Result<(), WHPError> {
+        self.set_property_from_buffer(
+            property_code,
+            property as *const _ as *const VOID,
+            std::mem::size_of::<WHV_PARTITION_PROPERTY>() as UINT32,
+        )?;
+        Ok(())
+    }
+
+    pub fn set_property_from_buffer(
+        &self,
+        property_code: WHV_PARTITION_PROPERTY_CODE,
+        property: *const VOID,
+        size: UINT32,
+    ) -> Result<(), WHPError> {
         check_result(unsafe {
-            WHvSetPartitionProperty(
-                self.partition,
-                property_code,
-                property as *const _ as *const VOID,
-                std::mem::size_of::<WHV_PARTITION_PROPERTY>() as UINT32,
-            )
+            WHvSetPartitionProperty(self.partition, property_code, property, size)
         })?;
         Ok(())
     }
@@ -68,18 +77,32 @@ impl Partition {
         property_code: WHV_PARTITION_PROPERTY_CODE,
     ) -> Result<WHV_PARTITION_PROPERTY, WHPError> {
         let mut property: WHV_PARTITION_PROPERTY = unsafe { std::mem::zeroed() };
+        self.get_property_buffer(
+            property_code,
+            &mut property as *mut _ as *mut VOID,
+            std::mem::size_of::<WHV_PARTITION_PROPERTY>() as UINT32,
+        )?;
+        Ok(property)
+    }
+
+    pub fn get_property_buffer(
+        &self,
+        property_code: WHV_PARTITION_PROPERTY_CODE,
+        property: *mut VOID,
+        size: UINT32,
+    ) -> Result<UINT32, WHPError> {
         let mut written_size: UINT32 = 0;
 
         check_result(unsafe {
             WHvGetPartitionProperty(
                 self.partition,
                 property_code,
-                &mut property as *mut _ as *mut VOID,
-                std::mem::size_of::<WHV_PARTITION_PROPERTY>() as UINT32,
+                property,
+                size,
                 &mut written_size,
             )
         })?;
-        Ok(property)
+        Ok(written_size)
     }
 
     pub fn setup(&self) -> Result<(), WHPError> {
