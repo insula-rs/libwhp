@@ -77,7 +77,7 @@ extern "stdcall" {
         Emulator: WHV_EMULATOR_HANDLE,
         Context: *mut VOID,
         VpContext: *const WHV_VP_EXIT_CONTEXT,
-        IoInstructionContext: *mut WHV_X64_IO_PORT_ACCESS_CONTEXT,
+        IoInstructionContext: *const WHV_X64_IO_PORT_ACCESS_CONTEXT,
         EmulatorReturnStatus: *mut WHV_EMULATOR_STATUS,
     ) -> HRESULT;
     pub fn WHvEmulatorTryMmioEmulation(
@@ -179,7 +179,7 @@ mod tests {
         with_emulator(|emulator| {
             let context = std::ptr::null_mut();
             let mut vp_context: WHV_VP_EXIT_CONTEXT = unsafe { std::mem::zeroed() };
-            let mut io_instruction_context: WHV_X64_IO_PORT_ACCESS_CONTEXT =
+            let io_instruction_context: WHV_X64_IO_PORT_ACCESS_CONTEXT =
                 unsafe { std::mem::zeroed() };
             let mut emulator_status: WHV_EMULATOR_STATUS = unsafe { std::mem::zeroed() };
 
@@ -191,7 +191,7 @@ mod tests {
                     emulator,
                     context,
                     &vp_context,
-                    &mut io_instruction_context,
+                    &io_instruction_context,
                     &mut emulator_status,
                 )
             };

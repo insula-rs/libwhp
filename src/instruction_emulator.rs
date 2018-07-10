@@ -171,7 +171,7 @@ where
         &mut self,
         context: *mut VOID,
         vp_context: &WHV_VP_EXIT_CONTEXT,
-        io_instruction_context: &mut WHV_X64_IO_PORT_ACCESS_CONTEXT,
+        io_instruction_context: &WHV_X64_IO_PORT_ACCESS_CONTEXT,
     ) -> Result<WHV_EMULATOR_STATUS, WHPError> {
         let mut callbacks_context = CallbacksContext {
             callbacks: self.callbacks,
@@ -386,8 +386,7 @@ mod tests {
     #[test]
     fn test_try_io_emulation() {
         let mut vp_context: WHV_VP_EXIT_CONTEXT = unsafe { std::mem::zeroed() };
-        let mut io_instruction_context: WHV_X64_IO_PORT_ACCESS_CONTEXT =
-            unsafe { std::mem::zeroed() };
+        let io_instruction_context: WHV_X64_IO_PORT_ACCESS_CONTEXT = unsafe { std::mem::zeroed() };
 
         // Without this WHvEmulatorTryIoEmulation returns E_INVALIDARG
         vp_context.InstructionLengthCr8 = 0xF;
@@ -400,7 +399,7 @@ mod tests {
         let _return_status = e.try_io_emulation(
             context.as_ptr() as *const _ as *mut VOID,
             &vp_context,
-            &mut io_instruction_context,
+            &io_instruction_context,
         ).unwrap();
     }
 
