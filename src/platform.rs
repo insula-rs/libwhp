@@ -60,7 +60,28 @@ impl Partition {
         Ok(())
     }
 
-    pub fn set_property_from_buffer(
+    pub fn set_property_cpuid_exits(&self, cpuids: &[UINT32]) -> Result<(), WHPError> {
+        self.set_property_from_buffer(
+            WHV_PARTITION_PROPERTY_CODE::WHvPartitionPropertyCodeCpuidExitList,
+            cpuids.as_ptr() as *const VOID,
+            (std::mem::size_of::<UINT32>() * cpuids.len()) as UINT32,
+        )?;
+        Ok(())
+    }
+
+    pub fn set_property_cpuid_results(
+        &self,
+        cpuid_results: &[WHV_X64_CPUID_RESULT],
+    ) -> Result<(), WHPError> {
+        self.set_property_from_buffer(
+            WHV_PARTITION_PROPERTY_CODE::WHvPartitionPropertyCodeCpuidResultList,
+            cpuid_results.as_ptr() as *const VOID,
+            (std::mem::size_of::<WHV_X64_CPUID_RESULT>() * cpuid_results.len()) as UINT32,
+        )?;
+        Ok(())
+    }
+
+    fn set_property_from_buffer(
         &self,
         property_code: WHV_PARTITION_PROPERTY_CODE,
         property: *const VOID,
@@ -85,7 +106,7 @@ impl Partition {
         Ok(property)
     }
 
-    pub fn get_property_buffer(
+    fn get_property_buffer(
         &self,
         property_code: WHV_PARTITION_PROPERTY_CODE,
         property: *mut VOID,
@@ -295,6 +316,37 @@ mod tests {
                 "The property value is not matching"
             );
         }
+    }
+
+    #[test]
+    fn test_set_get_partition_property_cpuid_exits() {
+        let p: Partition = Partition::new().unwrap();
+        let cpuids: [UINT32; 2] = [1, 2];
+
+        // Getting this property is not supported
+        assert_eq!(
+            p.set_property_cpuid_exits(&cpuids).ok(),
+            Some(()),
+            "set_property_cpuid_exits failed"
+        );
+    }
+
+    #[test]
+    fn test_set_get_partition_property_cpuid_results() {
+        const CPUID_EXT_HYPERVISOR: UINT32 = 1 << 31;
+        let p: Partition = Partition::new().unwrap();
+        let mut cpuid_results: Vec<WHV_X64_CPUID_RESULT> = Vec::new();
+        let mut cpuid_result: WHV_X64_CPUID_RESULT = unsafe { std::mem::zeroed() };
+        cpuid_result.Function = 1;
+        cpuid_result.Ecx = CPUID_EXT_HYPERVISOR;
+        cpuid_results.push(cpuid_result);
+
+        // Getting this property is not supported
+        assert_eq!(
+            p.set_property_cpuid_results(&cpuid_results).ok(),
+            Some(()),
+            "set_property_cpuid_results failed"
+        );
     }
 
     #[test]
