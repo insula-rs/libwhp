@@ -13,7 +13,7 @@ extern crate libwhp;
 use libwhp::*;
 
 fn main() {
-    let p: Partition = Partition::new().unwrap();
+    let mut p = Partition::new().unwrap();
 
     let mut property: WHV_PARTITION_PROPERTY = unsafe { std::mem::zeroed() };
     property.ProcessorCount = 1;
@@ -36,7 +36,7 @@ fn main() {
         WHV_MAP_GPA_RANGE_FLAGS::WHvMapGpaRangeFlagRead,
     ).unwrap();
 
-    let vp = p.create_virtual_processor(0).unwrap();
+    let mut vp = p.create_virtual_processor(0).unwrap();
 
     // Replace with actual register values
     const NUM_REGS: UINT32 = 1;
