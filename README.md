@@ -11,6 +11,7 @@ of the native Windows Hypervisor Platform (WHP) API.
 extern crate libwhp;
 
 use libwhp::*;
+use libwhp::memory::*;
 
 fn main() {
     let mut p = Partition::new().unwrap();
@@ -25,12 +26,12 @@ fn main() {
     p.setup().unwrap();
 
     // Replace with an actual mapping
-    const SIZE: UINT64 = 1024;
-    let source_address = Box::new([0; SIZE as usize]);
+    const SIZE: UINT64 = 0x100000;
+    let payload_mem = VirtualMemory::new(SIZE as usize).unwrap();
     let guest_address: WHV_GUEST_PHYSICAL_ADDRESS = 0;
 
     p.map_gpa_range(
-        source_address.as_ptr() as *const VOID,
+        &payload_mem,
         guest_address,
         SIZE,
         WHV_MAP_GPA_RANGE_FLAGS::WHvMapGpaRangeFlagRead,
