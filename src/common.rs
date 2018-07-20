@@ -20,11 +20,13 @@ use std::os::raw::{c_int, c_uchar, c_uint, c_ulonglong, c_ushort, c_void};
 
 pub type HRESULT = c_int;
 pub type UINT8 = c_uchar;
+pub type UINT16 = c_ushort;
 pub type UINT32 = c_uint;
 pub type UINT64 = c_ulonglong;
 pub type VOID = c_void;
 pub type BOOL = c_int;
-pub type UINT16 = c_ushort;
+pub type DWORD = c_uint;
+pub type SIZE_T = c_ulonglong;
 
 pub const FALSE: i32 = 0;
 pub const TRUE: i32 = 1;

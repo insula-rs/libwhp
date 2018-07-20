@@ -21,9 +21,11 @@ mod win_hv_emulation;
 mod win_hv_emulation_defs;
 mod win_hv_platform;
 mod win_hv_platform_defs;
+mod win_memory;
 
 pub use common::*;
 pub use platform::*;
+pub mod memory;
 
 #[macro_use]
 extern crate bitflags;

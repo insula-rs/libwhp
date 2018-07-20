@@ -13,6 +13,7 @@
 // under the License.
 
 use common::*;
+use memory::*;
 use std;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -167,9 +168,9 @@ impl Partition {
         })
     }
 
-    pub fn map_gpa_range(
+    pub fn map_gpa_range<T: Memory>(
         &mut self,
-        source_address: *const VOID,
+        source_address: &T,
         guest_address: WHV_GUEST_PHYSICAL_ADDRESS,
         size: UINT64,
         flags: WHV_MAP_GPA_RANGE_FLAGS,
@@ -177,7 +178,7 @@ impl Partition {
         check_result(unsafe {
             WHvMapGpaRange(
                 *self.partition.borrow_mut().handle(),
-                source_address,
+                source_address.as_ptr(),
                 guest_address,
                 size,
                 flags,
@@ -185,7 +186,7 @@ impl Partition {
         })?;
         Ok(GPARangeMapping {
             partition: Rc::clone(&self.partition),
-            source_address: source_address,
+            source_address: source_address.as_ptr(),
             guest_address: guest_address,
             size: size,
             flags: flags,
@@ -521,22 +522,27 @@ mod tests {
     #[test]
     fn test_map_gpa_range() {
         let mut p: Partition = Partition::new().unwrap();
-        const SIZE: UINT64 = 1024;
-        let source_address = Box::new([0; SIZE as usize]);
+        setup_vcpu_test(&mut p);
+
+        const SIZE: UINT64 = 0x100000;
         let guest_address: WHV_GUEST_PHYSICAL_ADDRESS = 0;
 
-        // TODO(alexpilotti): modify this test to have an S_OK result
-        let mapping_result = p.map_gpa_range(
-            source_address.as_ptr() as *const VOID,
+        let mem = VirtualMemory::new(SIZE as usize).unwrap();
+
+        let mapping = p.map_gpa_range(
+            &mem,
             guest_address,
             SIZE,
             WHV_MAP_GPA_RANGE_FLAGS::WHvMapGpaRangeFlagRead,
-        );
+        ).unwrap();
 
-        match mapping_result {
-            Err(ref e) if e.result() == E_INVALIDARG => {}
-            _ => panic!("Should have failed with E_INVALIDARG"),
-        }
+        assert_eq!(mapping.get_size(), SIZE);
+        assert_eq!(mapping.get_source_address(), mem.as_ptr());
+        assert_eq!(mapping.get_guest_address(), guest_address);
+        assert_eq!(
+            mapping.get_flags(),
+            WHV_MAP_GPA_RANGE_FLAGS::WHvMapGpaRangeFlagRead
+        );
     }
 
     #[test]
