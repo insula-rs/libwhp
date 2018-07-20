@@ -56,7 +56,7 @@ pub struct Partition {
     partition: Rc<RefCell<PartitionHandle>>,
 }
 
-impl<'a> Partition {
+impl Partition {
     pub fn new() -> Result<Partition, WHPError> {
         let mut handle: WHV_PARTITION_HANDLE = std::ptr::null_mut();
         check_result(unsafe { WHvCreatePartition(&mut handle) })?;
@@ -201,7 +201,7 @@ pub struct GPARangeMapping {
     flags: WHV_MAP_GPA_RANGE_FLAGS,
 }
 
-impl<'a> GPARangeMapping {
+impl GPARangeMapping {
     pub fn get_source_address(&self) -> *const VOID {
         self.source_address
     }
