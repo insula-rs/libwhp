@@ -456,6 +456,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_unmap_gpa_range_not_found() {
         with_partition(|part| {
             const SIZE: UINT64 = 1024;
