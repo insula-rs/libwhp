@@ -7,61 +7,64 @@ This crate takes advantage of the safety, lifetime, memory management and
 error handling features available in Rust while retaining the original design
 of the native Windows Hypervisor Platform (WHP) API.
 
+## Prerequisites
+
+Make sure to have at least:
+
+* Windows 10 build 17134 (or above)
+* Windows Server 1803 (or above)
+
+Enable the Windows Hypervisor Platform and reboot:
+
 ```
-extern crate libwhp;
-
-use libwhp::*;
-use libwhp::memory::*;
-
-fn main() {
-    let mut p = Partition::new().unwrap();
-
-    let mut property: WHV_PARTITION_PROPERTY = unsafe { std::mem::zeroed() };
-    property.ProcessorCount = 1;
-    p.set_property(
-        WHV_PARTITION_PROPERTY_CODE::WHvPartitionPropertyCodeProcessorCount,
-        &property,
-    ).unwrap();
-
-    p.setup().unwrap();
-
-    // Replace with an actual mapping
-    const SIZE: UINT64 = 0x100000;
-    let payload_mem = VirtualMemory::new(SIZE as usize).unwrap();
-    let guest_address: WHV_GUEST_PHYSICAL_ADDRESS = 0;
-
-    p.map_gpa_range(
-        &payload_mem,
-        guest_address,
-        SIZE,
-        WHV_MAP_GPA_RANGE_FLAGS::WHvMapGpaRangeFlagRead,
-    ).unwrap();
-
-    let mut vp = p.create_virtual_processor(0).unwrap();
-
-    // Replace with actual register values
-    const NUM_REGS: UINT32 = 1;
-    let mut reg_names: [WHV_REGISTER_NAME; NUM_REGS as usize] = unsafe { std::mem::zeroed() };
-    let mut reg_values: [WHV_REGISTER_VALUE; NUM_REGS as usize] = unsafe { std::mem::zeroed() };
-
-    reg_names[0] = WHV_REGISTER_NAME::WHvX64RegisterRax;
-    reg_values[0].Reg64 = 0;
-
-    vp.set_registers(&reg_names, &reg_values).unwrap();
-
-    loop {
-        let exit_context = vp.run().unwrap();
-        // Handle exits
-        if exit_context.ExitReason == WHV_RUN_VP_EXIT_REASON::WHvRunVpExitReasonX64Halt {
-            break;
-        }
-    }
-
-    // To translate a GVA into a GPA:
-    let gva: WHV_GUEST_PHYSICAL_ADDRESS = 0;
-    let (_translation_result, _gpa) = vp.translate_gva(
-        gva,
-        WHV_TRANSLATE_GVA_FLAGS::WHvTranslateGvaFlagValidateRead,
-    ).unwrap();
-}
+Dism /Online /Enable-Feature /FeatureName:HypervisorPlatform
+shutdown /r /t 0
 ```
+
+Last but not least, install [Rust on Windows](https://www.rust-lang.org/en-US/install.html).
+
+## Running the demo example
+
+1. Clone the project's repository:
+```
+git clone https://github.com/insula-rs/libwhp
+cd libwhp
+```
+
+2. This example includes a payload (the "guest" binary) that needs
+to be compiled using GCC, e.g. with WSL
+([Windows Subsystem for Linux](https://docs.microsoft.com/en-us/windows/wsl/install-win10)).
+All we need is make, gcc and ld. On Ubuntu:
+
+```
+wsl sudo apt-get update
+wsl sudo apt-get dist-upgrade -y
+wsl sudo apt-get install gcc make binutils -y
+```
+
+3. Build the payload:
+
+```
+pushd examples\payload
+wsl make
+popd
+```
+
+4. Build and run the example:
+
+```
+cargo run --example demo
+```
+
+Here's what it does:
+
+* Checks for the hypervisor presence
+* Creates a partition
+* Sets various partition properties, like the allowed exit types and CPUID results
+* Allocates and maps memory
+* Creates a vCPU
+* Sets up registers for long mode (64 bit)
+* Reads the payload in memory (payload.img)
+* Sets up the MMIO / IO port intruction emulator and related callbacks
+* Starts the vCPU loop
+* Handles various type of exits: CPUID, MSR read / write, IO port, MMIO, Halt, etc

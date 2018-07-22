@@ -4,3 +4,5 @@
 Cargo.lock
 *.code-workspace
 .vscode/
+examples/payload/payload.img
+examples/payload/payload.o
