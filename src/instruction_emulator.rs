@@ -178,7 +178,7 @@ where
             context: context,
         };
 
-        let mut return_status: WHV_EMULATOR_STATUS = 0;
+        let mut return_status: WHV_EMULATOR_STATUS = unsafe { std::mem::zeroed() };
         check_result(unsafe {
             WHvEmulatorTryIoEmulation(
                 self.emulator,
@@ -202,7 +202,7 @@ where
             context: context,
         };
 
-        let mut return_status: WHV_EMULATOR_STATUS = 0;
+        let mut return_status: WHV_EMULATOR_STATUS = unsafe { std::mem::zeroed() };
         check_result(unsafe {
             WHvEmulatorTryMmioEmulation(
                 self.emulator,

@@ -332,13 +332,10 @@ bitflags! {
 #[repr(C)]
 pub union WHV_CAPABILITY {
     pub HypervisorPresent: BOOL,
-    // WHV_CAPABILITY_FEATURES
-    pub Features: UINT64,
-    // WHV_EXTENDED_VM_EXITS
-    pub ExtendedVmExits: UINT64,
+    pub Features: WHV_CAPABILITY_FEATURES,
+    pub ExtendedVmExits: WHV_EXTENDED_VM_EXITS,
     pub ProcessorVendor: WHV_PROCESSOR_VENDOR,
-    // WHV_PROCESSOR_FEATURES
-    pub ProcessorFeatures: UINT64,
+    pub ProcessorFeatures: WHV_PROCESSOR_FEATURES,
     pub ProcessorClFlushSize: UINT8,
     pub ExceptionExitBitmap: UINT64,
 }
@@ -358,16 +355,92 @@ pub struct WHV_X64_CPUID_RESULT {
 #[allow(non_snake_case)]
 #[repr(C)]
 pub union WHV_PARTITION_PROPERTY {
-    // WHV_EXTENDED_VM_EXITS
-    pub ExtendedVmExits: UINT64,
-    // WHV_PROCESSOR_FEATURES
-    pub ProcessorFeatures: UINT64,
+    pub ExtendedVmExits: WHV_EXTENDED_VM_EXITS,
+    pub ProcessorFeatures: WHV_PROCESSOR_FEATURES,
     pub ProcessorClFlushSize: UINT8,
     pub ProcessorCount: UINT32,
     pub CpuidExitList: [UINT32; 1],
     pub CpuidResultList: [WHV_X64_CPUID_RESULT; 1],
     pub ExceptionExitBitmap: UINT64,
 }
+
+#[allow(non_snake_case)]
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct WHV_CAPABILITY_FEATURES {
+    pub AsUINT64: UINT64,
+}
+
+bitfield!(WHV_CAPABILITY_FEATURES AsUINT64: UINT64 [
+    Reserved set_Reserved[0..64],
+]);
+
+#[allow(non_snake_case)]
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct WHV_EXTENDED_VM_EXITS {
+    pub AsUINT64: UINT64,
+}
+
+bitfield!(WHV_EXTENDED_VM_EXITS AsUINT64: UINT64 [
+    X64CpuidExit set_X64CpuidExit[0..1],
+    X64MsrExit set_X64MsrExit[1..2],
+    ExceptionExit set_ExceptionExit[2..3],
+    Reserved set_Reserved[4..64],
+]);
+
+#[allow(non_snake_case)]
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub struct WHV_PROCESSOR_FEATURES {
+    pub AsUINT64: UINT64,
+}
+
+bitfield!(WHV_PROCESSOR_FEATURES AsUINT64: UINT64 [
+    Sse3Support set_Sse3Support[0..1],
+    LahfSahfSupport set_LahfSahfSupport[1..2],
+    Ssse3Support set_Ssse3Support[2..3],
+    Sse4_1Support set_Sse4_1Support[3..4],
+    Sse4_2Support set_Sse4_2Support[4..5],
+    Sse4aSupport set_Sse4aSupport[5..6],
+    XopSupport set_XopSupport[6..7],
+    PopCntSupport set_PopCntSupport[7..8],
+    Cmpxchg16bSupport set_Cmpxchg16bSupport[8..9],
+    Altmovcr8Support set_Altmovcr8Support[9..10],
+    LzcntSupport set_LzcntSupport[10..11],
+    MisAlignSseSupport set_MisAlignSseSupport[11..12],
+    MmxExtSupport set_MmxExtSupport[12..13],
+    Amd3DNowSupport set_Amd3DNowSupport[13..14],
+    ExtendedAmd3DNowSupport set_ExtendedAmd3DNowSupport[14..15],
+    Page1GbSupport set_Page1GbSupport[15..16],
+    AesSupport set_AesSupport[16..17],
+    PclmulqdqSupport set_PclmulqdqSupport[17..18],
+    PcidSupport set_PcidSupport[18..19],
+    Fma4Support set_Fma4Support[19..20],
+    F16CSupport set_F16CSupport[20..21],
+    RdRandSupport set_RdRandSupport[21..22],
+    RdWrFsGsSupport set_RdWrFsGsSupport[22..23],
+    SmepSupport set_SmepSupport[23..24],
+    EnhancedFastStringSupport set_EnhancedFastStringSupport[24..25],
+    Bmi1Support set_Bmi1Support[25..26],
+    Bmi2Support set_Bmi2Support[26..27],
+    Reserved1 set_Reserved1[27..28],
+    MovbeSupport set_MovbeSupport[28..29],
+    Npiep1Support set_Npiep1Support[29..30],
+    DepX87FPUSaveSupport set_DepX87FPUSaveSupport[30..31],
+    RdSeedSupport set_RdSeedSupportp[31..32],
+    AdxSupport set_AdxSupport[32..33],
+    IntelPrefetchSupport set_IntelPrefetchSupport[33..34],
+    SmapSupport set_SmapSupport[34..35],
+    HleSupport set_HleSupport[35..36],
+    RtmSupport set_RtmSupport[36..37],
+    RdtscpSupport set_RdtscpSupport[37..38],
+    ClflushoptSupport set_ClflushoptSupport[38..39],
+    ClwbSupport set_ClwbSupport[39..40],
+    ShaSupport set_ShaSupport[40..41],
+    X87PointersSavedSupport set_X87PointersSavedSupport[41..42],
+    Reserved2 set_Reserved2[42..64],
+]);
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[allow(non_snake_case)]
@@ -376,9 +449,20 @@ pub struct WHV_X64_SEGMENT_REGISTER {
     pub Base: UINT64,
     pub Limit: UINT32,
     pub Selector: UINT16,
-    // Bit fields are not supported in Rust.
     pub Attributes: UINT16,
 }
+
+bitfield!(WHV_X64_SEGMENT_REGISTER Attributes: UINT16 [
+    SegmentType set_SegmentType[0..4],
+    NonSystemSegment set_NonSystemSegment[4..5],
+    DescriptorPrivilegeLevel set_DescriptorPrivilegeLevel[5..7],
+    Present set_Present[7..8],
+    Reserved set_Reserved[8..12],
+    Available set_Available[12..13],
+    Long set_Long[13..14],
+    Default set_Default[14..15],
+    Granularity set_Granularity[15..16],
+]);
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[allow(non_snake_case)]
@@ -392,9 +476,27 @@ pub struct WHV_X64_TABLE_REGISTER {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[allow(non_snake_case)]
 #[repr(C)]
+pub struct WHV_X64_VP_EXECUTION_STATE {
+    pub AsUINT16: UINT16,
+}
+
+bitfield!(WHV_X64_VP_EXECUTION_STATE AsUINT16: UINT16[
+    Cpl set_Cpl[0..2],
+    Cr0Pe set_Cr0Pe[2..3],
+    Cr0Am set_Cr0Am[3..4],
+    EferLma set_EferLma[4..5],
+    DebugActive set_DebugActive[5..6],
+    InterruptionPending set_InterruptionPending[6..7],
+    Reserved0 set_Reserved0[7..12],
+    InterruptShadow set_InterruptShadow[12..13],
+    Reserved1 set_Reserved1[13..16],
+]);
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[allow(non_snake_case)]
+#[repr(C)]
 pub struct WHV_VP_EXIT_CONTEXT {
-    // WHV_X64_VP_EXECUTION_STATE
-    pub ExecutionState: UINT16,
+    pub ExecutionState: WHV_X64_VP_EXECUTION_STATE,
     // Rust doesn't support bit fields so InstructionLength (4 bits) and Cr8 (4 bits)
     // are combined here
     pub InstructionLengthCr8: UINT8,
@@ -404,6 +506,26 @@ pub struct WHV_VP_EXIT_CONTEXT {
     pub Rip: UINT64,
     pub Rflags: UINT64,
 }
+
+bitfield!(WHV_VP_EXIT_CONTEXT InstructionLengthCr8: UINT8[
+    InstructionLength set_InstructionLength[0..4],
+    Cr8 set_Cr8[4..8],
+]);
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[allow(non_snake_case)]
+#[repr(C)]
+pub struct WHV_MEMORY_ACCESS_INFO {
+    pub AsUINT32: UINT32,
+}
+
+bitfield!(WHV_MEMORY_ACCESS_INFO  AsUINT32: UINT32[
+    // WHV_MEMORY_ACCESS_TYPE
+    AccessType set_AccessType[0..2],
+    GpaUnmapped set_GpaUnmapped[2..3],
+    GvaValid set_GvaValid[3..4],
+    Reserved set_Reserved[4..32],
+]);
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[allow(non_snake_case)]
@@ -415,11 +537,25 @@ pub struct WHV_MEMORY_ACCESS_CONTEXT {
     pub InstructionBytes: [UINT8; 16],
 
     // Memory access info
-    // WHV_MEMORY_ACCESS_INFO
-    pub AccessInfo: UINT32,
+    pub AccessInfo: WHV_MEMORY_ACCESS_INFO,
     pub Gpa: WHV_GUEST_PHYSICAL_ADDRESS,
     pub Gva: WHV_GUEST_VIRTUAL_ADDRESS,
 }
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[allow(non_snake_case)]
+#[repr(C)]
+pub struct WHV_X64_IO_PORT_ACCESS_INFO {
+    pub AsUINT32: UINT32,
+}
+
+bitfield!(WHV_X64_IO_PORT_ACCESS_INFO AsUINT32: UINT32[
+    IsWrite set_IsWrite[0..1],
+    AccessSize set_AccessSize[1..4],
+    StringOp set_StringOp[4..5],
+    RepPrefix set_RepPrefix[5..6],
+    Reserved set_Reserved[6..32],
+]);
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[allow(non_snake_case)]
@@ -431,8 +567,7 @@ pub struct WHV_X64_IO_PORT_ACCESS_CONTEXT {
     pub InstructionBytes: [UINT8; 16],
 
     // I/O port access info
-    // WHV_X64_IO_PORT_ACCESS_INFO
-    pub AccessInfo: UINT32,
+    pub AccessInfo: WHV_X64_IO_PORT_ACCESS_INFO,
     pub PortNumber: UINT16,
     pub Reserved2: [UINT16; 3],
     pub Rax: UINT64,
@@ -446,10 +581,21 @@ pub struct WHV_X64_IO_PORT_ACCESS_CONTEXT {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[allow(non_snake_case)]
 #[repr(C)]
+pub struct WHV_X64_MSR_ACCESS_INFO {
+    pub AsUINT32: UINT32,
+}
+
+bitfield!(WHV_X64_MSR_ACCESS_INFO AsUINT32: UINT32[
+    IsWrite set_IsWrite[0..1],
+    Reserved set_Reserved[1..32],
+]);
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[allow(non_snake_case)]
+#[repr(C)]
 pub struct WHV_X64_MSR_ACCESS_CONTEXT {
     // MSR access info
-    // WHV_X64_MSR_ACCESS_INFO
-    pub AccessInfo: UINT32,
+    pub AccessInfo: WHV_X64_MSR_ACCESS_INFO,
     pub MsrNumber: UINT32,
     pub Rax: UINT64,
     pub Rdx: UINT64,
@@ -473,14 +619,26 @@ pub struct WHV_X64_CPUID_ACCESS_CONTEXT {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[allow(non_snake_case)]
 #[repr(C)]
+pub struct WHV_VP_EXCEPTION_INFO {
+    pub AsUINT32: UINT32,
+}
+
+bitfield!(WHV_VP_EXCEPTION_INFO AsUINT32: UINT32[
+    ErrorCodeValid set_ErrorCodeValid[0..1],
+    SoftwareException set_SoftwareException[1..2],
+    Reserved set_Reserved[2..32],
+]);
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[allow(non_snake_case)]
+#[repr(C)]
 pub struct WHV_VP_EXCEPTION_CONTEXT {
     pub InstructionByteCount: UINT8,
     pub Reserved: [UINT8; 3],
     pub InstructionBytes: [UINT8; 16],
 
     // Exception info
-    // WHV_VP_EXCEPTION_INFO
-    pub ExceptionInfo: UINT32,
+    pub ExceptionInfo: WHV_VP_EXCEPTION_INFO,
     // WHV_EXCEPTION_TYPE
     pub ExceptionType: UINT8,
     pub Reserved2: [UINT8; 3],
@@ -545,6 +703,131 @@ pub struct WHV_UINT128 {
     // UINT32  Dword[4];
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[allow(non_snake_case)]
+#[repr(C)]
+pub struct WHV_X64_INTERRUPT_STATE_REGISTER {
+    AsUINT64: UINT64,
+}
+
+bitfield!(WHV_X64_INTERRUPT_STATE_REGISTER AsUINT64: UINT64[
+    InterruptShadow set_InterruptShadow[0..1],
+    NmiMasked set_NmiMasked[1..2],
+    Reserved set_Reserved[2..64],
+]);
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[allow(non_snake_case)]
+#[repr(C)]
+pub struct WHV_X64_PENDING_INTERRUPTION_REGISTER {
+    AsUINT64: UINT64,
+}
+
+bitfield!(WHV_X64_PENDING_INTERRUPTION_REGISTER AsUINT64: UINT64[
+    InterruptionPending set_InterruptionPending[0..1],
+    // WHV_X64_PENDING_INTERRUPTION_TYPE
+    InterruptionType set_InterruptionType[1..4],
+    DeliverErrorCode set_DeliverErrorCode[4..5],
+    InstructionLength set_InstructionLength[5..9],
+    NestedEvent set_NestedEvent[9..10],
+    Reserved set_Reserved[10..16],
+    InterruptionVector set_InterruptionVector[16..32],
+    ErrorCode set_ErrorCode[32..64],
+]);
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[allow(non_snake_case)]
+#[repr(C)]
+pub struct WHV_X64_DELIVERABILITY_NOTIFICATIONS_REGISTER {
+    AsUINT64: UINT64,
+}
+
+bitfield!(WHV_X64_DELIVERABILITY_NOTIFICATIONS_REGISTER AsUINT64: UINT64[
+    NmiNotification set_NmiNotification[0..1],
+    InterruptNotification set_InterruptNotification[1..2],
+    InterruptPriority set_InterruptPriority[2..6],
+    Reserved set_Reserved[6..64],
+]);
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[allow(non_snake_case)]
+#[repr(C)]
+pub struct WHV_X64_FP_REGISTER {
+    AsUINT128: WHV_UINT128,
+    // TODO: add bitfields
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[allow(non_snake_case)]
+#[repr(C)]
+pub struct WHV_X64_FP_CONTROL_STATUS_REGISTER_32bit_mode_anon_struct {
+    LastFpEip: UINT32,
+    LastFpCs: UINT16,
+    Reserved2: UINT16,
+}
+
+#[derive(Copy, Clone)]
+#[allow(non_snake_case)]
+#[repr(C)]
+pub union WHV_X64_FP_CONTROL_STATUS_REGISTER_anon_union {
+    LastFpRip: UINT64,
+    anon_struct: WHV_X64_FP_CONTROL_STATUS_REGISTER_32bit_mode_anon_struct,
+}
+
+#[derive(Copy, Clone)]
+#[allow(non_snake_case)]
+#[repr(C)]
+pub struct WHV_X64_FP_CONTROL_STATUS_REGISTER_anon_struct {
+    FpControl: UINT16,
+    FpStatus: UINT16,
+    FpTag: UINT8,
+    Reserved: UINT8,
+    LastFpOp: UINT16,
+    anon_union: WHV_X64_FP_CONTROL_STATUS_REGISTER_anon_union,
+}
+
+#[derive(Copy, Clone)]
+#[allow(non_snake_case)]
+#[repr(C)]
+pub union WHV_X64_FP_CONTROL_STATUS_REGISTER {
+    AsUINT128: WHV_UINT128,
+    anon_struct: WHV_X64_FP_CONTROL_STATUS_REGISTER_anon_struct,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[allow(non_snake_case)]
+#[repr(C)]
+pub struct WHV_X64_XMM_CONTROL_STATUS_REGISTER_32bit_mode_anon_struct {
+    LastFpDp: UINT32,
+    LastFpDs: UINT16,
+    Reserved: UINT16,
+}
+
+#[derive(Copy, Clone)]
+#[allow(non_snake_case)]
+#[repr(C)]
+pub union WHV_X64_XMM_CONTROL_STATUS_REGISTER_anon_union {
+    LastFpRdp: UINT64,
+    anon_struct: WHV_X64_XMM_CONTROL_STATUS_REGISTER_32bit_mode_anon_struct,
+}
+
+#[derive(Copy, Clone)]
+#[allow(non_snake_case)]
+#[repr(C)]
+pub struct WHV_X64_XMM_CONTROL_STATUS_REGISTER_anon_struct {
+    XmmStatusControl: UINT32,
+    XmmStatusControlMask: UINT32,
+    anon_union: WHV_X64_XMM_CONTROL_STATUS_REGISTER_anon_union,
+}
+
+#[derive(Copy, Clone)]
+#[allow(non_snake_case)]
+#[repr(C)]
+pub union WHV_X64_XMM_CONTROL_STATUS_REGISTER {
+    anon_struct: WHV_X64_XMM_CONTROL_STATUS_REGISTER_anon_struct,
+    AsUINT128: WHV_UINT128,
+}
+
 #[derive(Copy, Clone)]
 #[allow(non_snake_case)]
 #[repr(C)]
@@ -554,20 +837,14 @@ pub union WHV_REGISTER_VALUE {
     pub Reg32: UINT32,
     pub Reg16: UINT16,
     pub Reg8: UINT8,
-    // WHV_X64_FP_REGISTER
-    pub Fp: WHV_UINT128,
-    // WHV_X64_FP_CONTROL_STATUS_REGISTER
-    pub FpControlStatus: WHV_UINT128,
-    // WHV_X64_XMM_CONTROL_STATUS_REGISTER
-    pub XmmControlStatus: WHV_UINT128,
+    pub Fp: WHV_X64_FP_REGISTER,
+    pub FpControlStatus: WHV_X64_FP_CONTROL_STATUS_REGISTER,
+    pub XmmControlStatus: WHV_X64_XMM_CONTROL_STATUS_REGISTER,
     pub Segment: WHV_X64_SEGMENT_REGISTER,
     pub Table: WHV_X64_TABLE_REGISTER,
-    // WHV_X64_INTERRUPT_STATE_REGISTER
-    pub InterruptState: UINT64,
-    // WHV_X64_PENDING_INTERRUPTION_REGISTER
-    pub PendingInterruption: UINT64,
-    // WHV_X64_DELIVERABILITY_NOTIFICATIONS_REGISTER
-    pub DeliverabilityNotifications: UINT64,
+    pub InterruptState: WHV_X64_INTERRUPT_STATE_REGISTER,
+    pub PendingInterruption: WHV_X64_PENDING_INTERRUPTION_REGISTER,
+    pub DeliverabilityNotifications: WHV_X64_DELIVERABILITY_NOTIFICATIONS_REGISTER,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]

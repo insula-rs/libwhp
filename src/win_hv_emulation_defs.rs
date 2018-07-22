@@ -18,7 +18,27 @@ use common::*;
 use win_hv_platform_defs::*;
 
 pub type WHV_EMULATOR_HANDLE = *mut VOID;
-pub type WHV_EMULATOR_STATUS = UINT32;
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[allow(non_snake_case)]
+#[repr(C)]
+pub struct WHV_EMULATOR_STATUS {
+    AsUINT32: UINT32,
+}
+
+bitfield!(WHV_EMULATOR_STATUS AsUINT32: UINT32[
+    EmulationSuccessful set_EmulationSuccessful[0..1],
+    InternalEmulationFailure set_InternalEmulationFailure[1..2],
+    IoPortCallbackFailed set_IoPortCallbackFailed[2..3],
+    MemoryCallbackFailed set_MemoryCallbackFailed[3..4],
+    TranslateGvaPageCallbackFailed set_TranslateGvaPageCallbackFailed[4..5],
+    TranslateGvaPageCallbackGpaIsNotAligned set_TranslateGvaPageCallbackGpaIsNotAligned[5..6],
+    GetVirtualProcessorRegistersCallbackFailed set_GetVirtualProcessorRegistersCallbackFailed[6..7],
+    SetVirtualProcessorRegistersCallbackFailed set_SetVirtualProcessorRegistersCallbackFailed[7..8],
+    InterruptCausedIntercept set_InterruptCausedIntercept[8..9],
+    GuestCannotBeFaulted set_GuestCannotBeFaulted[9..10],
+    Reserved set_Reserved[10..32],
+]);
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[allow(non_snake_case)]

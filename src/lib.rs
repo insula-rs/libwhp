@@ -14,6 +14,9 @@
 
 extern crate libc;
 
+#[macro_use]
+mod macros;
+
 mod common;
 pub mod instruction_emulator;
 mod platform;
