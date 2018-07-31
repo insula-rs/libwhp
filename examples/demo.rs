@@ -103,8 +103,8 @@ fn handle_msr_exit(vp: &mut VirtualProcessor, exit_context: &WHV_RUN_VP_EXIT_CON
     let msr_access = unsafe { exit_context.anon_union.MsrAccess };
 
     const NUM_REGS: UINT32 = 3;
-    let mut reg_names: [WHV_REGISTER_NAME; NUM_REGS as usize] = unsafe { std::mem::zeroed() };
-    let mut reg_values: [WHV_REGISTER_VALUE; NUM_REGS as usize] = unsafe { std::mem::zeroed() };
+    let mut reg_names: [WHV_REGISTER_NAME; NUM_REGS as usize] = Default::default();
+    let mut reg_values: [WHV_REGISTER_VALUE; NUM_REGS as usize] = Default::default();
 
     reg_names[0] = WHV_REGISTER_NAME::WHvX64RegisterRip;
     reg_names[1] = WHV_REGISTER_NAME::WHvX64RegisterRax;
@@ -150,8 +150,8 @@ fn handle_cpuid_exit(vp: &mut VirtualProcessor, exit_context: &WHV_RUN_VP_EXIT_C
     println!("Got CPUID leaf: {}", cpuid_access.Rax);
 
     const NUM_REGS: UINT32 = 5;
-    let mut reg_names: [WHV_REGISTER_NAME; NUM_REGS as usize] = unsafe { std::mem::zeroed() };
-    let mut reg_values: [WHV_REGISTER_VALUE; NUM_REGS as usize] = unsafe { std::mem::zeroed() };
+    let mut reg_names: [WHV_REGISTER_NAME; NUM_REGS as usize] = Default::default();
+    let mut reg_values: [WHV_REGISTER_VALUE; NUM_REGS as usize] = Default::default();
 
     reg_names[0] = WHV_REGISTER_NAME::WHvX64RegisterRip;
     reg_names[1] = WHV_REGISTER_NAME::WHvX64RegisterRax;
@@ -203,14 +203,14 @@ fn handle_io_port_exit<T: EmulatorCallbacks>(
 }
 
 fn setup_partition(p: &mut Partition) {
-    let mut property: WHV_PARTITION_PROPERTY = unsafe { std::mem::zeroed() };
+    let mut property: WHV_PARTITION_PROPERTY = Default::default();
     property.ProcessorCount = 1;
     p.set_property(
         WHV_PARTITION_PROPERTY_CODE::WHvPartitionPropertyCodeProcessorCount,
         &property,
     ).unwrap();
 
-    property = unsafe { std::mem::zeroed() };
+    property = Default::default();
     unsafe {
         property.ExtendedVmExits.set_X64CpuidExit(1);
         property.ExtendedVmExits.set_X64MsrExit(1);
@@ -225,7 +225,7 @@ fn setup_partition(p: &mut Partition) {
     let cpuids: [UINT32; 1] = [1];
     p.set_property_cpuid_exits(&cpuids).unwrap();
 
-    let mut cpuid_results: [WHV_X64_CPUID_RESULT; 1] = unsafe { std::mem::zeroed() };
+    let mut cpuid_results: [WHV_X64_CPUID_RESULT; 1] = Default::default();
 
     cpuid_results[0].Function = 0x40000000;
     let mut id_reg_values: [UINT32; 3] = [0; 3];
@@ -259,8 +259,8 @@ fn setup_long_mode(vp: &mut VirtualProcessor, payload_mem: &VirtualMemory) {
     }
 
     const NUM_REGS: UINT32 = 13;
-    let mut reg_names: [WHV_REGISTER_NAME; NUM_REGS as usize] = unsafe { std::mem::zeroed() };
-    let mut reg_values: [WHV_REGISTER_VALUE; NUM_REGS as usize] = unsafe { std::mem::zeroed() };
+    let mut reg_names: [WHV_REGISTER_NAME; NUM_REGS as usize] = Default::default();
+    let mut reg_values: [WHV_REGISTER_VALUE; NUM_REGS as usize] = Default::default();
 
     // Setup paging
     reg_names[0] = WHV_REGISTER_NAME::WHvX64RegisterCr3;

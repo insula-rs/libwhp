@@ -101,12 +101,10 @@ mod tests {
     use std;
 
     fn check_hypervisor_present() {
-        let mut capability: WHV_CAPABILITY;
+        let mut capability: WHV_CAPABILITY = Default::default();
         let mut written_size: UINT32 = 0;
 
         let result = unsafe {
-            capability = std::mem::zeroed();
-
             WHvGetCapability(
                 WHV_CAPABILITY_CODE::WHvCapabilityCodeHypervisorPresent,
                 &mut capability as *mut _ as *mut VOID,
@@ -159,10 +157,9 @@ mod tests {
         F: Fn(UINT32),
     {
         let vp_index = 0;
-        let mut prop: WHV_PARTITION_PROPERTY;
+        let mut prop: WHV_PARTITION_PROPERTY = Default::default();
 
         let result = unsafe {
-            prop = std::mem::zeroed();
             prop.ProcessorCount = 1;
 
             WHvSetPartitionProperty(
@@ -200,12 +197,10 @@ mod tests {
 
     #[test]
     fn test_get_capability() {
-        let mut capability: WHV_CAPABILITY;
+        let mut capability: WHV_CAPABILITY = Default::default();
         let mut written_size: UINT32 = 0;
 
         let result = unsafe {
-            capability = std::mem::zeroed();
-
             WHvGetCapability(
                 WHV_CAPABILITY_CODE::WHvCapabilityCodeFeatures,
                 &mut capability as *mut _ as *mut VOID,
@@ -231,12 +226,11 @@ mod tests {
     #[test]
     fn test_set_get_partition_property() {
         with_partition(|part| {
-            let mut prop: WHV_PARTITION_PROPERTY;
-            let mut prop_out: WHV_PARTITION_PROPERTY;
+            let mut prop: WHV_PARTITION_PROPERTY = Default::default();
+            let mut prop_out: WHV_PARTITION_PROPERTY = Default::default();
             let mut written_size: UINT32 = 0;
 
             let result = unsafe {
-                prop = std::mem::zeroed();
                 prop.ProcessorCount = 1;
 
                 WHvSetPartitionProperty(
@@ -254,8 +248,6 @@ mod tests {
             );
 
             let result = unsafe {
-                prop_out = std::mem::zeroed();
-
                 WHvGetPartitionProperty(
                     part,
                     WHV_PARTITION_PROPERTY_CODE::WHvPartitionPropertyCodeProcessorCount,
@@ -311,15 +303,10 @@ mod tests {
             with_vcpu(part, |vp_index| {
                 const NUM_REGS: UINT32 = 1;
                 const REG_VALUE: UINT64 = 11111111;
-                let mut reg_names: [WHV_REGISTER_NAME; NUM_REGS as usize];
-                let mut reg_values: [WHV_REGISTER_VALUE; NUM_REGS as usize];
-                let mut reg_values_out: [WHV_REGISTER_VALUE; NUM_REGS as usize];
-
-                unsafe {
-                    reg_names = std::mem::zeroed();
-                    reg_values = std::mem::zeroed();
-                    reg_values_out = std::mem::zeroed();
-                }
+                let mut reg_names: [WHV_REGISTER_NAME; NUM_REGS as usize] = Default::default();
+                let mut reg_values: [WHV_REGISTER_VALUE; NUM_REGS as usize] = Default::default();
+                let mut reg_values_out: [WHV_REGISTER_VALUE; NUM_REGS as usize] =
+                    Default::default();
 
                 reg_names[0] = WHV_REGISTER_NAME::WHvX64RegisterRax;
                 reg_values[0].Reg64 = REG_VALUE;
@@ -368,11 +355,10 @@ mod tests {
     fn test_run_vcpu() {
         with_partition(|part| {
             with_vcpu(part, |vp_index| {
-                let mut exit_context: WHV_RUN_VP_EXIT_CONTEXT;
+                let mut exit_context: WHV_RUN_VP_EXIT_CONTEXT = Default::default();
                 let exit_context_size = std::mem::size_of::<WHV_RUN_VP_EXIT_CONTEXT>() as UINT32;
 
                 let result = unsafe {
-                    exit_context = std::mem::zeroed();
                     WHvRunVirtualProcessor(
                         part,
                         vp_index,
@@ -387,8 +373,8 @@ mod tests {
                     result
                 );
 
+                exit_context = Default::default();
                 let result = unsafe {
-                    exit_context = std::mem::zeroed();
                     WHvRunVirtualProcessor(
                         part,
                         vp_index,
@@ -478,10 +464,9 @@ mod tests {
             with_vcpu(part, |vp_index| {
                 let gva: WHV_GUEST_PHYSICAL_ADDRESS = 0;
                 let mut gpa: WHV_GUEST_PHYSICAL_ADDRESS = 0;
-                let mut translation_result: WHV_TRANSLATE_GVA_RESULT;
+                let mut translation_result: WHV_TRANSLATE_GVA_RESULT = Default::default();
 
                 let result = unsafe {
-                    translation_result = std::mem::zeroed();
                     WHvTranslateGva(
                         part,
                         vp_index,

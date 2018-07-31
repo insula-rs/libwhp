@@ -21,12 +21,10 @@ use win_hv_platform::*;
 pub use win_hv_platform_defs::*;
 
 pub fn get_capability(capability_code: WHV_CAPABILITY_CODE) -> Result<WHV_CAPABILITY, WHPError> {
-    let mut capability: WHV_CAPABILITY;
+    let mut capability: WHV_CAPABILITY = Default::default();
     let mut written_size: UINT32 = 0;
 
     check_result(unsafe {
-        capability = std::mem::zeroed();
-
         WHvGetCapability(
             capability_code,
             &mut capability as *mut _ as *mut VOID,
@@ -121,7 +119,7 @@ impl Partition {
         &self,
         property_code: WHV_PARTITION_PROPERTY_CODE,
     ) -> Result<WHV_PARTITION_PROPERTY, WHPError> {
-        let mut property: WHV_PARTITION_PROPERTY = unsafe { std::mem::zeroed() };
+        let mut property: WHV_PARTITION_PROPERTY = Default::default();
         self.get_property_buffer(
             property_code,
             &mut property as *mut _ as *mut VOID,
@@ -239,7 +237,7 @@ impl VirtualProcessor {
     }
 
     pub fn run(&mut self) -> Result<WHV_RUN_VP_EXIT_CONTEXT, WHPError> {
-        let mut exit_context: WHV_RUN_VP_EXIT_CONTEXT = unsafe { std::mem::zeroed() };
+        let mut exit_context: WHV_RUN_VP_EXIT_CONTEXT = Default::default();
         let exit_context_size = std::mem::size_of::<WHV_RUN_VP_EXIT_CONTEXT>() as UINT32;
 
         check_result(unsafe {
@@ -313,7 +311,7 @@ impl VirtualProcessor {
         flags: WHV_TRANSLATE_GVA_FLAGS,
     ) -> Result<(WHV_TRANSLATE_GVA_RESULT, WHV_GUEST_PHYSICAL_ADDRESS), WHPError> {
         let mut gpa: WHV_GUEST_PHYSICAL_ADDRESS = 0;
-        let mut translation_result: WHV_TRANSLATE_GVA_RESULT = unsafe { std::mem::zeroed() };
+        let mut translation_result: WHV_TRANSLATE_GVA_RESULT = Default::default();
 
         check_result(unsafe {
             WHvTranslateGva(
@@ -371,7 +369,7 @@ mod tests {
     fn test_set_get_partition_property() {
         let mut p: Partition = Partition::new().unwrap();
         let property_code = WHV_PARTITION_PROPERTY_CODE::WHvPartitionPropertyCodeProcessorCount;
-        let mut property: WHV_PARTITION_PROPERTY = unsafe { std::mem::zeroed() };
+        let mut property: WHV_PARTITION_PROPERTY = Default::default();
         property.ProcessorCount = 1;
 
         p.set_property(property_code, &property).unwrap();
@@ -403,7 +401,7 @@ mod tests {
         const CPUID_EXT_HYPERVISOR: UINT32 = 1 << 31;
         let mut p: Partition = Partition::new().unwrap();
         let mut cpuid_results: Vec<WHV_X64_CPUID_RESULT> = Vec::new();
-        let mut cpuid_result: WHV_X64_CPUID_RESULT = unsafe { std::mem::zeroed() };
+        let mut cpuid_result: WHV_X64_CPUID_RESULT = Default::default();
         cpuid_result.Function = 1;
         cpuid_result.Ecx = CPUID_EXT_HYPERVISOR;
         cpuid_results.push(cpuid_result);
@@ -419,7 +417,7 @@ mod tests {
     #[test]
     fn test_setup_partition() {
         let mut p: Partition = Partition::new().unwrap();
-        let mut property: WHV_PARTITION_PROPERTY = unsafe { std::mem::zeroed() };
+        let mut property: WHV_PARTITION_PROPERTY = Default::default();
         property.ProcessorCount = 1;
 
         // Setup fails without setting at least the number of vcpus
@@ -444,7 +442,7 @@ mod tests {
     }
 
     fn setup_vcpu_test(p: &mut Partition) {
-        let mut property: WHV_PARTITION_PROPERTY = unsafe { std::mem::zeroed() };
+        let mut property: WHV_PARTITION_PROPERTY = Default::default();
         property.ProcessorCount = 1;
 
         p.set_property(
@@ -500,10 +498,9 @@ mod tests {
 
         const NUM_REGS: UINT32 = 1;
         const REG_VALUE: UINT64 = 11111111;
-        let mut reg_names: [WHV_REGISTER_NAME; NUM_REGS as usize] = unsafe { std::mem::zeroed() };
-        let mut reg_values: [WHV_REGISTER_VALUE; NUM_REGS as usize] = unsafe { std::mem::zeroed() };
-        let mut reg_values_out: [WHV_REGISTER_VALUE; NUM_REGS as usize] =
-            unsafe { std::mem::zeroed() };
+        let mut reg_names: [WHV_REGISTER_NAME; NUM_REGS as usize] = Default::default();
+        let mut reg_values: [WHV_REGISTER_VALUE; NUM_REGS as usize] = Default::default();
+        let mut reg_values_out: [WHV_REGISTER_VALUE; NUM_REGS as usize] = Default::default();
 
         reg_names[0] = WHV_REGISTER_NAME::WHvX64RegisterRax;
         reg_values[0].Reg64 = REG_VALUE;

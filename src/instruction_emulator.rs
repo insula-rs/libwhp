@@ -178,7 +178,7 @@ where
             context: context,
         };
 
-        let mut return_status: WHV_EMULATOR_STATUS = unsafe { std::mem::zeroed() };
+        let mut return_status: WHV_EMULATOR_STATUS = Default::default();
         check_result(unsafe {
             WHvEmulatorTryIoEmulation(
                 self.emulator,
@@ -202,7 +202,7 @@ where
             context: context,
         };
 
-        let mut return_status: WHV_EMULATOR_STATUS = unsafe { std::mem::zeroed() };
+        let mut return_status: WHV_EMULATOR_STATUS = Default::default();
         check_result(unsafe {
             WHvEmulatorTryMmioEmulation(
                 self.emulator,
@@ -385,8 +385,8 @@ mod tests {
 
     #[test]
     fn test_try_io_emulation() {
-        let mut vp_context: WHV_VP_EXIT_CONTEXT = unsafe { std::mem::zeroed() };
-        let io_instruction_context: WHV_X64_IO_PORT_ACCESS_CONTEXT = unsafe { std::mem::zeroed() };
+        let mut vp_context: WHV_VP_EXIT_CONTEXT = Default::default();
+        let io_instruction_context: WHV_X64_IO_PORT_ACCESS_CONTEXT = Default::default();
 
         // Without this WHvEmulatorTryIoEmulation returns E_INVALIDARG
         vp_context.InstructionLengthCr8 = 0xF;
@@ -405,8 +405,8 @@ mod tests {
 
     #[test]
     fn test_try_mmio_emulation() {
-        let vp_context: WHV_VP_EXIT_CONTEXT = unsafe { std::mem::zeroed() };
-        let mmio_instruction_context: WHV_MEMORY_ACCESS_CONTEXT = unsafe { std::mem::zeroed() };
+        let vp_context: WHV_VP_EXIT_CONTEXT = Default::default();
+        let mmio_instruction_context: WHV_MEMORY_ACCESS_CONTEXT = Default::default();
 
         let mut callbacks = TestCallbacks::default();
         let context = CString::new(callbacks.expected_context).unwrap();
@@ -433,7 +433,7 @@ mod tests {
             context: context.as_ptr() as *const _ as *mut VOID,
         };
 
-        let mut io_access: WHV_EMULATOR_IO_ACCESS_INFO = unsafe { std::mem::zeroed() };
+        let mut io_access: WHV_EMULATOR_IO_ACCESS_INFO = Default::default();
         io_access.AccessSize = EXPECTED_IO_ACCESS_SIZE;
 
         let ret = Emulator::<TestCallbacks>::io_port_cb(
@@ -457,7 +457,7 @@ mod tests {
             context: context.as_ptr() as *const _ as *mut VOID,
         };
 
-        let mut mem_access: WHV_EMULATOR_MEMORY_ACCESS_INFO = unsafe { std::mem::zeroed() };
+        let mut mem_access: WHV_EMULATOR_MEMORY_ACCESS_INFO = Default::default();
         mem_access.AccessSize = EXPECTED_MEMORY_ACCESS_SIZE;
 
         let ret = Emulator::<TestCallbacks>::memory_cb(
@@ -471,9 +471,8 @@ mod tests {
     fn test_get_vp_registers_callback() {
         const NUM_REGS: UINT32 = 1;
         const REG_VALUE: UINT64 = 11111111;
-        let mut reg_names: [WHV_REGISTER_NAME; NUM_REGS as usize] = unsafe { std::mem::zeroed() };
-        let mut returned_reg_values: [WHV_REGISTER_VALUE; NUM_REGS as usize] =
-            unsafe { std::mem::zeroed() };
+        let mut reg_names: [WHV_REGISTER_NAME; NUM_REGS as usize] = Default::default();
+        let mut returned_reg_values: [WHV_REGISTER_VALUE; NUM_REGS as usize] = Default::default();
 
         reg_names[0] = WHV_REGISTER_NAME::WHvX64RegisterRax;
         returned_reg_values[0].Reg64 = REG_VALUE;
@@ -492,7 +491,7 @@ mod tests {
             context: context.as_ptr() as *const _ as *mut VOID,
         };
 
-        let mut reg_values: [WHV_REGISTER_VALUE; NUM_REGS as usize] = unsafe { std::mem::zeroed() };
+        let mut reg_values: [WHV_REGISTER_VALUE; NUM_REGS as usize] = Default::default();
 
         let ret = Emulator::<TestCallbacks>::get_vp_registers_cb(
             &mut callbacks_context as *mut _ as *mut VOID,
@@ -510,8 +509,8 @@ mod tests {
     fn test_set_vp_registers_callback() {
         const NUM_REGS: UINT32 = 1;
         const REG_VALUE: UINT64 = 11111111;
-        let mut reg_names: [WHV_REGISTER_NAME; NUM_REGS as usize] = unsafe { std::mem::zeroed() };
-        let mut reg_values: [WHV_REGISTER_VALUE; NUM_REGS as usize] = unsafe { std::mem::zeroed() };
+        let mut reg_names: [WHV_REGISTER_NAME; NUM_REGS as usize] = Default::default();
+        let mut reg_values: [WHV_REGISTER_VALUE; NUM_REGS as usize] = Default::default();
 
         reg_names[0] = WHV_REGISTER_NAME::WHvX64RegisterRax;
         reg_values[0].Reg64 = REG_VALUE;

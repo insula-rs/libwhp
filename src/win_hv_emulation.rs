@@ -178,10 +178,9 @@ mod tests {
     fn test_try_io_emulation() {
         with_emulator(|emulator| {
             let context = std::ptr::null_mut();
-            let mut vp_context: WHV_VP_EXIT_CONTEXT = unsafe { std::mem::zeroed() };
-            let io_instruction_context: WHV_X64_IO_PORT_ACCESS_CONTEXT =
-                unsafe { std::mem::zeroed() };
-            let mut emulator_status: WHV_EMULATOR_STATUS = unsafe { std::mem::zeroed() };
+            let mut vp_context: WHV_VP_EXIT_CONTEXT = Default::default();
+            let io_instruction_context: WHV_X64_IO_PORT_ACCESS_CONTEXT = Default::default();
+            let mut emulator_status: WHV_EMULATOR_STATUS = Default::default();
 
             // Without this WHvEmulatorTryIoEmulation returns E_INVALIDARG
             vp_context.InstructionLengthCr8 = 0xF;
@@ -208,9 +207,9 @@ mod tests {
     fn test_try_mmiio_emulation() {
         with_emulator(|emulator| {
             let context = std::ptr::null_mut();
-            let vp_context: WHV_VP_EXIT_CONTEXT = unsafe { std::mem::zeroed() };
-            let mmio_instruction_context: WHV_MEMORY_ACCESS_CONTEXT = unsafe { std::mem::zeroed() };
-            let mut emulator_status: WHV_EMULATOR_STATUS = unsafe { std::mem::zeroed() };
+            let vp_context: WHV_VP_EXIT_CONTEXT = Default::default();
+            let mmio_instruction_context: WHV_MEMORY_ACCESS_CONTEXT = Default::default();
+            let mut emulator_status: WHV_EMULATOR_STATUS = Default::default();
 
             let result = unsafe {
                 WHvEmulatorTryMmioEmulation(
