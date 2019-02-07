@@ -1,4 +1,5 @@
 // Copyright 2018 Cloudbase Solutions Srl
+// Copyright 2018-2019 CrowdStrike, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may
 // not use this file except in compliance with the License. You may obtain
@@ -14,6 +15,8 @@
 
 #![allow(non_camel_case_types)]
 #![allow(non_upper_case_globals)]
+
+use std::ops::{BitAnd, BitAndAssign, BitOrAssign, Shl, Shr};
 
 use common::*;
 
@@ -31,10 +34,15 @@ pub const WHV_E_GPA_RANGE_NOT_FOUND: HRESULT = -2143878395; // 0x80370305
 pub enum WHV_PARTITION_PROPERTY_CODE {
     WHvPartitionPropertyCodeExtendedVmExits = 0x00000001,
     WHvPartitionPropertyCodeExceptionExitBitmap = 0x00000002,
+    WHvPartitionPropertyCodeSeparateSecurityDomain = 0x00000003,
+
     WHvPartitionPropertyCodeProcessorFeatures = 0x00001001,
     WHvPartitionPropertyCodeProcessorClFlushSize = 0x00001002,
     WHvPartitionPropertyCodeCpuidExitList = 0x00001003,
     WHvPartitionPropertyCodeCpuidResultList = 0x00001004,
+    WHvPartitionPropertyCodeLocalApicEmulationMode = 0x00001005,
+    WHvPartitionPropertyCodeProcessorXsaveFeatures = 0x00001006,
+
     WHvPartitionPropertyCodeProcessorCount = 0x00001fff,
 }
 
@@ -57,6 +65,7 @@ pub enum WHV_CAPABILITY_CODE {
     WHvCapabilityCodeProcessorVendor = 0x00001000,
     WHvCapabilityCodeProcessorFeatures = 0x00001001,
     WHvCapabilityCodeProcessorClFlushSize = 0x00001002,
+    HWvCapabilityCodeProcessorXsaveFeatures = 0x00001003,
 }
 
 impl Default for WHV_CAPABILITY_CODE {
@@ -70,6 +79,7 @@ impl Default for WHV_CAPABILITY_CODE {
 pub enum WHV_PROCESSOR_VENDOR {
     WHvProcessorVendorAmd = 0x0000,
     WHvProcessorVendorIntel = 0x0001,
+    WHvProcessorVendorHygon = 0x0002,
 }
 
 impl Default for WHV_PROCESSOR_VENDOR {
@@ -91,6 +101,7 @@ pub enum WHV_RUN_VP_EXIT_REASON {
     WHvRunVpExitReasonUnsupportedFeature = 0x00000006,
     WHvRunVpExitReasonX64InterruptWindow = 0x00000007,
     WHvRunVpExitReasonX64Halt = 0x00000008,
+    WHvRunVpExitReasonX64ApicEoi = 0x00000009,
 
     // Additional exits that can be configured through partition properties
     WHvRunVpExitReasonX64MsrAccess = 0x00001000,
@@ -198,6 +209,9 @@ pub enum WHV_REGISTER_NAME {
     WHvX64RegisterDr6 = 0x00000025,
     WHvX64RegisterDr7 = 0x00000026,
 
+    // X64 Extended Control Registers
+    WHvX64RegisterXCr0 = 0x00000027,
+
     // X64 Floating Point and Vector Registers
     WHvX64RegisterXmm0 = 0x00001000,
     WHvX64RegisterXmm1 = 0x00001001,
@@ -290,13 +304,19 @@ pub enum WHV_REGISTER_NAME {
     WHvX64RegisterMsrMtrrFix4kF8000 = 0x0000207A,
 
     WHvX64RegisterTscAux = 0x0000207B,
+    WHvX64RegisterSpecCtrl = 0x00002084,
+    WHvX64RegisterPredCmd = 0x00002085,
+
+    // APIC state (also accessible via WHv(Get/Set)VirtualProcessorInterruptControllerState)
+    WHvX64RegisterApicId = 0x00003002,
+    WHvX64RegisterApicVersion = 0x00003003,
 
     // Interrupt / Event Registers
     WHvRegisterPendingInterruption = 0x80000000,
     WHvRegisterInterruptState = 0x80000001,
-    WHvRegisterPendingEvent0 = 0x80000002,
-    WHvRegisterPendingEvent1 = 0x80000003,
+    WHvRegisterPendingEvent = 0x80000002,
     WHvX64RegisterDeliverabilityNotifications = 0x80000004,
+    WHvRegisterInternalActivityState = 0x80000005,
 }
 
 impl Default for WHV_REGISTER_NAME {
@@ -359,6 +379,19 @@ impl Default for WHV_EXCEPTION_TYPE {
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum WHV_X64_LOCAL_APIC_EMULATION_MODE {
+    WHvX64LocalApicEmulationModeNone = 0x0,
+    WHvX64LocalApicEmulationModeXApic = 0x1,
+}
+
+impl Default for WHV_X64_LOCAL_APIC_EMULATION_MODE {
+    fn default() -> Self {
+        unsafe { ::std::mem::zeroed() }
+    }
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum WHV_MEMORY_ACCESS_TYPE {
     WHvMemoryAccessRead = 0,
     WHvMemoryAccessWrite = 1,
@@ -390,6 +423,7 @@ bitflags! {
         const WHvMapGpaRangeFlagRead = 0x00000001;
         const WHvMapGpaRangeFlagWrite = 0x00000002;
         const WHvMapGpaRangeFlagExecute = 0x00000004;
+        const WHvMapGpaRangeFlagTrackDirtyPages = 0x00000008;
     }
 }
 
@@ -402,6 +436,7 @@ pub union WHV_CAPABILITY {
     pub ExtendedVmExits: WHV_EXTENDED_VM_EXITS,
     pub ProcessorVendor: WHV_PROCESSOR_VENDOR,
     pub ProcessorFeatures: WHV_PROCESSOR_FEATURES,
+    pub ProcessorXsaveFeatures: WHV_PROCESSOR_XSAVE_FEATURES,
     pub ProcessorClFlushSize: UINT8,
     pub ExceptionExitBitmap: UINT64,
 }
@@ -429,11 +464,14 @@ pub struct WHV_X64_CPUID_RESULT {
 pub union WHV_PARTITION_PROPERTY {
     pub ExtendedVmExits: WHV_EXTENDED_VM_EXITS,
     pub ProcessorFeatures: WHV_PROCESSOR_FEATURES,
+    pub ProcessorXsaveFeatures: WHV_PROCESSOR_XSAVE_FEATURES,
     pub ProcessorClFlushSize: UINT8,
     pub ProcessorCount: UINT32,
     pub CpuidExitList: [UINT32; 1],
     pub CpuidResultList: [WHV_X64_CPUID_RESULT; 1],
     pub ExceptionExitBitmap: UINT64,
+    pub LocalApicEmulationMode: WHV_X64_LOCAL_APIC_EMULATION_MODE,
+    pub SeparateSecurityDomain: BOOL,
 }
 
 impl Default for WHV_PARTITION_PROPERTY {
@@ -450,7 +488,12 @@ pub struct WHV_CAPABILITY_FEATURES {
 }
 
 bitfield!(WHV_CAPABILITY_FEATURES AsUINT64: UINT64 [
-    Reserved set_Reserved[0..64],
+    PartialUnmap set_PartialUnmap[0..1],
+    LocalApicEmulation set_LocalApicEmulation[1..2],
+    Xsave set_Xsave[2..3],
+    DirtyPageTracking set_DirtyPageTracking[3..4],
+    SpeculationControl set_SpeculationControl[4..6],
+    Reserved set_Reserved[5..64],
 ]);
 
 #[allow(non_snake_case)]
@@ -517,7 +560,54 @@ bitfield!(WHV_PROCESSOR_FEATURES AsUINT64: UINT64 [
     ClwbSupport set_ClwbSupport[39..40],
     ShaSupport set_ShaSupport[40..41],
     X87PointersSavedSupport set_X87PointersSavedSupport[41..42],
-    Reserved2 set_Reserved2[42..64],
+    InvpcidSupport set_InvpcSupport[42..43],
+    IbrsSupport set_IbrsSupport[43..44],
+    StibpSupport set_StibpSupport[44..45],
+    IbpbSupport set_IbpbSupport[45..46],
+    Reserved2 set_Reserved2[46..47],
+    SsbdSupport set_SsbdSupport[47..48],
+    FastShortRepMovSupport set_FastShortRepMovSupport[48..49],
+    Reserved3 set_Reserved3[49..50],
+    RdclNo set_RdclNo[50..51],
+    IbrsAllSupport set_ibrsAllSupport[51..52],
+    Reserved4 set_Reserved4[52..53],
+    SsbNo set_ssbNo[53..54],
+    RsbANo set_RsbANo[54..55],
+    Reserved5 set_Reserved5[55..64],
+]);
+
+#[allow(non_snake_case)]
+#[derive(Copy, Clone, Default)]
+#[repr(C)]
+pub struct WHV_PROCESSOR_XSAVE_FEATURES {
+    pub AsUINT64: UINT64,
+}
+
+bitfield!(WHV_PROCESSOR_XSAVE_FEATURES AsUINT64: UINT64 [
+        XsaveSupport set_XsaveSupport[0..1],
+        XsaveoptSupport set_XsaveoptSupport[1..2],
+        AvxSupport set_AvxSupport[2..3],
+        Avx2Support set_Avx2Support[3..4],
+        FmaSupport set_FmaSupport[4..5],
+        MpxSupport set_MpxSupport[5..6],
+        Avx512Support set_Avx512Support[6..7],
+        Avx512DQSupport set_Avx512DQSupport[7..8],
+        Avx512CDSupport set_Avx512CDSupport[8..9],
+        Avx512BWSupport set_Avx512BWSupport[9..10],
+        Avx512VLSupport set_Avx512VLSupport[10..11],
+        XsaveCompSupport set_XsaveCompSupport[11..12],
+        XsaveSupervisorSupport set_XsaveSupervisorSupport[12..13],
+        Xcr1Support set_Xcr1Support[13..14],
+        Avx512BitalgSupport set_Avx512BitalgSupport[14..15],
+        Avx512IfmaSupport set_Avx512IfmaSupport[15..16],
+        Avx512VBmiSupport set_Avx512VBmiSupport[16..17],
+        Avx512VBmi2Support set_Avx512VBmi2Support[17..18],
+        Avx512VnniSupport set_Avx512VnniSupport[18..19],
+        GfniSupport set_GfniSupport[19..20],
+        VaesSupport set_VaesSupport[20..21],
+        Avx512VPopcntdqSupport set_Avx512VPopcntdqSupport[21..22],
+        VpclmulqdqSupport set_VpclmulqdqSupport[22..23],
+        Reserved set_Reserved[23..64],
 ]);
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Default)]
@@ -731,6 +821,15 @@ pub struct WHV_X64_INTERRUPTION_DELIVERABLE_CONTEXT {
     pub DeliverableType: WHV_X64_PENDING_INTERRUPTION_TYPE,
 }
 
+// Context data for an exit caused by an APIC EOI of a level-triggered
+// interrupt (WHvRunVpExitReasonX64ApicEoi)
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Default)]
+#[allow(non_snake_case)]
+#[repr(C)]
+pub struct WHV_X64_APIC_EOI_CONTEXT {
+    pub InterruptVector: UINT32,
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Default)]
 #[allow(non_snake_case)]
 #[repr(C)]
@@ -759,6 +858,7 @@ pub union WHV_RUN_VP_EXIT_CONTEXT_anon_union {
     pub InterruptWindow: WHV_X64_INTERRUPTION_DELIVERABLE_CONTEXT,
     pub UnsupportedFeature: WHV_X64_UNSUPPORTED_FEATURE_CONTEXT,
     pub CancelReason: WHV_RUN_VP_CANCELED_CONTEXT,
+    pub ApicEoi: WHV_X64_APIC_EOI_CONTEXT,
 }
 
 impl Default for WHV_RUN_VP_EXIT_CONTEXT_anon_union {
@@ -787,11 +887,75 @@ pub struct WHV_UINT128 {
     // UINT32  Dword[4];
 }
 
+impl Shl<usize> for WHV_UINT128 {
+    type Output = Self;
+
+    fn shl(self, rhs: usize) -> WHV_UINT128 {
+        let shifted_out_of_low = self.Low64 >> (64 - rhs);
+        let shifted_high = (self.High64 << rhs) | (shifted_out_of_low);
+        WHV_UINT128 {
+            Low64: self.Low64 << rhs,
+            High64: shifted_high,
+        }
+    }
+}
+
+impl Shr<usize> for WHV_UINT128 {
+    type Output = Self;
+
+    fn shr(self, rhs: usize) -> WHV_UINT128 {
+        let shifted_out_of_high = self.High64 << (64 - rhs);
+        let shifted_low = (self.Low64 >> rhs) | shifted_out_of_high;
+        WHV_UINT128 {
+            Low64: shifted_low,
+            High64: self.High64 >> rhs,
+        }
+    }
+}
+
+impl BitAnd<u64> for WHV_UINT128 {
+    type Output = Self;
+
+    // rhs is the "righ-hand side" of the expression 'a & b'
+    fn bitand(self, rhs: u64) -> Self {
+        WHV_UINT128 {
+            Low64: self.Low64 & rhs,
+            High64: self.High64,
+        }
+    }
+}
+
+impl BitAnd for WHV_UINT128 {
+    type Output = Self;
+
+    // rhs is the "righ-hand side" of the expression 'a & b'
+    fn bitand(self, rhs: Self) -> Self {
+        WHV_UINT128 {
+            Low64: self.Low64 & rhs.Low64,
+            High64: self.High64 & rhs.High64,
+        }
+    }
+}
+
+impl BitOrAssign for WHV_UINT128 {
+    fn bitor_assign(&mut self, rhs: Self) {
+        self.High64 |= rhs.High64;
+        self.Low64 |= rhs.Low64;
+    }
+}
+
+impl BitAndAssign<u64> for WHV_UINT128 {
+    fn bitand_assign(&mut self, rhs: u64) {
+        self.High64 = self.High64;
+        self.Low64 &= rhs;
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Default)]
 #[allow(non_snake_case)]
 #[repr(C)]
 pub struct WHV_X64_INTERRUPT_STATE_REGISTER {
-    AsUINT64: UINT64,
+    pub AsUINT64: UINT64,
 }
 
 bitfield!(WHV_X64_INTERRUPT_STATE_REGISTER AsUINT64: UINT64[
@@ -804,13 +968,12 @@ bitfield!(WHV_X64_INTERRUPT_STATE_REGISTER AsUINT64: UINT64[
 #[allow(non_snake_case)]
 #[repr(C)]
 pub struct WHV_X64_PENDING_INTERRUPTION_REGISTER {
-    AsUINT64: UINT64,
+    pub AsUINT64: UINT64,
 }
 
 bitfield!(WHV_X64_PENDING_INTERRUPTION_REGISTER AsUINT64: UINT64[
     InterruptionPending set_InterruptionPending[0..1],
-    // WHV_X64_PENDING_INTERRUPTION_TYPE
-    InterruptionType set_InterruptionType[1..4],
+    InterruptionType set_InterruptionType[1..4],  // WHV_X64_PENDING_INTERRUPTION_TYPE
     DeliverErrorCode set_DeliverErrorCode[4..5],
     InstructionLength set_InstructionLength[5..9],
     NestedEvent set_NestedEvent[9..10],
@@ -819,11 +982,61 @@ bitfield!(WHV_X64_PENDING_INTERRUPTION_REGISTER AsUINT64: UINT64[
     ErrorCode set_ErrorCode[32..64],
 ]);
 
+#[repr(C)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum WHV_X64_PENDING_EVENT_TYPE {
+    WHvX64PendingEventException = 0,
+    WHvX64PendingEventExtInt = 5,
+}
+
+impl Default for WHV_X64_PENDING_EVENT_TYPE {
+    fn default() -> Self {
+        unsafe { ::std::mem::zeroed() }
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Default)]
+#[allow(non_snake_case)]
+#[repr(C)]
+pub struct WHV_X64_PENDING_EXCEPTION_EVENT {
+    pub AsUINT128: WHV_UINT128,
+}
+
+bitfield!(WHV_X64_PENDING_EXCEPTION_EVENT AsUINT128: WHV_UINT128 [
+        EventPending set_EventPending[0..1],
+        // Must be WHvX64PendingEventException
+        EventType set_EventType[1..4],
+        Reserved0 set_Reserved0[4..8],
+
+        DeliverErrorCode set_DeliverErrorCode[8..9],
+        Reserved1 set_Reserved1[9..16],
+        Vector set_Vector[16..32],
+        ErrorCode set_ErrorCode[32..64],
+        ExceptionParameter set_ExceptionParameter[64..128],
+]);
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Default)]
+#[allow(non_snake_case)]
+#[repr(C)]
+pub struct WHV_X64_PENDING_EXT_INT_EVENT {
+    pub AsUINT128: WHV_UINT128,
+}
+
+bitfield!(WHV_X64_PENDING_EXT_INT_EVENT AsUINT128: WHV_UINT128 [
+    EventPending set_EventPending[0..1],
+    EventType set_EventType[1..4],
+    Reserved0 set_Reserved0[4..8],
+    Vector set_Vector[8..16],
+    Reserved1 set_Reserved1[16..64],
+
+    Reserved2 set_Reserved2[64..128],
+]);
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Default)]
 #[allow(non_snake_case)]
 #[repr(C)]
 pub struct WHV_X64_DELIVERABILITY_NOTIFICATIONS_REGISTER {
-    AsUINT64: UINT64,
+    pub AsUINT64: UINT64,
 }
 
 bitfield!(WHV_X64_DELIVERABILITY_NOTIFICATIONS_REGISTER AsUINT64: UINT64[
@@ -837,7 +1050,7 @@ bitfield!(WHV_X64_DELIVERABILITY_NOTIFICATIONS_REGISTER AsUINT64: UINT64[
 #[allow(non_snake_case)]
 #[repr(C)]
 pub struct WHV_X64_FP_REGISTER {
-    AsUINT128: WHV_UINT128,
+    pub AsUINT128: WHV_UINT128,
     // TODO: add bitfields
 }
 
@@ -880,8 +1093,8 @@ pub struct WHV_X64_FP_CONTROL_STATUS_REGISTER_anon_struct {
 #[allow(non_snake_case)]
 #[repr(C)]
 pub union WHV_X64_FP_CONTROL_STATUS_REGISTER {
-    AsUINT128: WHV_UINT128,
-    anon_struct: WHV_X64_FP_CONTROL_STATUS_REGISTER_anon_struct,
+    pub AsUINT128: WHV_UINT128,
+    pub anon_struct: WHV_X64_FP_CONTROL_STATUS_REGISTER_anon_struct,
 }
 
 impl Default for WHV_X64_FP_CONTROL_STATUS_REGISTER {
@@ -926,8 +1139,8 @@ pub struct WHV_X64_XMM_CONTROL_STATUS_REGISTER_anon_struct {
 #[allow(non_snake_case)]
 #[repr(C)]
 pub union WHV_X64_XMM_CONTROL_STATUS_REGISTER {
-    anon_struct: WHV_X64_XMM_CONTROL_STATUS_REGISTER_anon_struct,
-    AsUINT128: WHV_UINT128,
+    pub anon_struct: WHV_X64_XMM_CONTROL_STATUS_REGISTER_anon_struct,
+    pub AsUINT128: WHV_UINT128,
 }
 
 impl Default for WHV_X64_XMM_CONTROL_STATUS_REGISTER {
@@ -953,6 +1166,8 @@ pub union WHV_REGISTER_VALUE {
     pub InterruptState: WHV_X64_INTERRUPT_STATE_REGISTER,
     pub PendingInterruption: WHV_X64_PENDING_INTERRUPTION_REGISTER,
     pub DeliverabilityNotifications: WHV_X64_DELIVERABILITY_NOTIFICATIONS_REGISTER,
+    pub ExceptionEvent: WHV_X64_PENDING_EXCEPTION_EVENT,
+    pub ExtIntEvent: WHV_X64_PENDING_EXT_INT_EVENT,
 }
 
 impl Default for WHV_REGISTER_VALUE {
@@ -967,6 +1182,157 @@ impl Default for WHV_REGISTER_VALUE {
 pub struct WHV_TRANSLATE_GVA_RESULT {
     pub ResultCode: WHV_TRANSLATE_GVA_RESULT_CODE,
     pub Reserved: UINT32,
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum WHV_INTERRUPT_TYPE {
+    WHvX64InterruptTypeFixed = 0,
+    WHvX64InterruptTypeLowestPriority = 1,
+    WHvX64InterruptTypeNmi = 4,
+    WHvX64InterruptTypeInit = 5,
+    WHvX64InterruptTypeSipi = 6,
+    WHvX64InterruptTypeLocalInt1 = 9,
+}
+
+impl Default for WHV_INTERRUPT_TYPE {
+    fn default() -> Self {
+        unsafe { ::std::mem::zeroed() }
+    }
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum WHV_INTERRUPT_DESTINATION_MODE {
+    WHvX64InterruptDestinationModePhysical = 0,
+    WHvX64InterruptDestinationModeLogical = 1,
+}
+
+impl Default for WHV_INTERRUPT_DESTINATION_MODE {
+    fn default() -> Self {
+        unsafe { ::std::mem::zeroed() }
+    }
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum WHV_INTERRUPT_TRIGGER_MODE {
+    WHvX64InterruptTriggerModeEdge = 0,
+    WHvX64InterruptTriggerModeLevel = 1,
+}
+
+impl Default for WHV_INTERRUPT_TRIGGER_MODE {
+    fn default() -> Self {
+        unsafe { ::std::mem::zeroed() }
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Default)]
+#[allow(non_snake_case)]
+#[repr(C)]
+pub struct WHV_INTERRUPT_CONTROL {
+    // Rust doesn't support bit fields so Type (8 bits), DestinationMode (4 bits),
+    // TriggerMode (4 bits) and the remainder Reserved (48 bits) are combined here
+    pub TypeDestinationModeTriggerModeReserved: UINT64,
+    pub Destination: UINT32,
+    pub Vector: UINT32,
+}
+
+bitfield!(WHV_INTERRUPT_CONTROL TypeDestinationModeTriggerModeReserved: UINT64 [
+    InterruptType set_InterruptType[0..8],
+    DestinationMode set_DestinationMode[8..12],
+    TriggerMode set_TriggerMode[12..16],
+    Reserved set_Reserved[16..64],
+]);
+
+// WHvGetPartitionCounters types
+#[repr(C)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum WHV_PARTITION_COUNTER_SET {
+    WHvPartitionCounterSetMemory = 0,
+}
+
+impl Default for WHV_PARTITION_COUNTER_SET {
+    fn default() -> Self {
+        unsafe { ::std::mem::zeroed() }
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Default)]
+#[allow(non_snake_case)]
+#[repr(C)]
+pub struct WHV_PARTITION_MEMORY_COUNTERS {
+    pub Mapped4KPageCount: UINT64,
+    pub Mapped2MPageCount: UINT64,
+    pub Mapped1GPageCount: UINT64,
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum WHV_PROCESSOR_COUNTER_SET {
+    WHvProcessorCounterSetRuntime = 0,
+    WHvProcessorCounterSetIntercepts = 1,
+    WHvProcessorCounterSetEvents = 2,
+    WHvProcessorCounterSetApic = 3,
+}
+
+impl Default for WHV_PROCESSOR_COUNTER_SET {
+    fn default() -> Self {
+        unsafe { ::std::mem::zeroed() }
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Hash, Default)]
+#[allow(non_snake_case)]
+#[repr(C)]
+pub struct WHV_PROCESSOR_RUNTIME_COUNTERS {
+    pub TotalRuntime100ns: UINT64,
+    pub HypervisorRuntime100ns: UINT64,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Hash, Default)]
+#[allow(non_snake_case)]
+#[repr(C)]
+pub struct WHV_PROCESSOR_INTERCEPT_COUNTER {
+    pub Count: UINT64,
+    pub Time100ns: UINT64,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Hash, Default)]
+#[allow(non_snake_case)]
+#[repr(C)]
+pub struct WHV_PROCESSOR_INTERCEPT_COUNTERS {
+    pub PageInvalidations: WHV_PROCESSOR_INTERCEPT_COUNTER,
+    pub ControlRegisterAccesses: WHV_PROCESSOR_INTERCEPT_COUNTER,
+    pub IoInstructions: WHV_PROCESSOR_INTERCEPT_COUNTER,
+    pub HaltInstructions: WHV_PROCESSOR_INTERCEPT_COUNTER,
+    pub CpuidInstructions: WHV_PROCESSOR_INTERCEPT_COUNTER,
+    pub MsrAccesses: WHV_PROCESSOR_INTERCEPT_COUNTER,
+    pub OtherIntercepts: WHV_PROCESSOR_INTERCEPT_COUNTER,
+    pub PendingInterrupts: WHV_PROCESSOR_INTERCEPT_COUNTER,
+    pub EmulatedInstructions: WHV_PROCESSOR_INTERCEPT_COUNTER,
+    pub DebugRegisterAccesses: WHV_PROCESSOR_INTERCEPT_COUNTER,
+    pub PageFaultIntercepts: WHV_PROCESSOR_INTERCEPT_COUNTER,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Hash, Default)]
+#[allow(non_snake_case)]
+#[repr(C)]
+pub struct WHV_PROCESSOR_EVENT_COUNTERS {
+    pub PageFaultCount: UINT64,
+    pub ExceptionCount: UINT64,
+    pub InterruptCount: UINT64,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Hash, Default)]
+#[allow(non_snake_case)]
+#[repr(C)]
+pub struct WHV_PROCESSOR_APIC_COUNTERS {
+    pub MmioAccessCount: UINT64,
+    pub EoiAccessCount: UINT64,
+    pub TprAccessCount: UINT64,
+    pub SentIpiCount: UINT64,
+    pub SelfIpiCount: UINT64,
 }
 
 #[cfg(test)]
@@ -1002,5 +1368,25 @@ mod tests {
         assert_eq!(std::mem::size_of::<WHV_UINT128>(), 16);
         assert_eq!(std::mem::size_of::<WHV_REGISTER_VALUE>(), 16);
         assert_eq!(std::mem::size_of::<WHV_TRANSLATE_GVA_RESULT>(), 8);
+    }
+
+    #[test]
+    fn test_whv_uint128_shl() {
+        let shifted = WHV_UINT128 {
+            High64: 0x5555_4444_3333_89ab,
+            Low64: 0xcdef_2222_1111_0000,
+        } << 16;
+        assert_eq!(shifted.High64, 0x4444_3333_89ab_cdef);
+        assert_eq!(shifted.Low64, 0x2222_1111_0000_0000);
+    }
+
+    #[test]
+    fn test_whv_uint128_shr() {
+        let shifted = WHV_UINT128 {
+            High64: 0x5555_4444_3333_89ab,
+            Low64: 0xcdef_2222_1111_0000,
+        } >> 16;
+        assert_eq!(shifted.High64, 0x0000_5555_4444_3333);
+        assert_eq!(shifted.Low64, 0x89ab_cdef_2222_1111);
     }
 }

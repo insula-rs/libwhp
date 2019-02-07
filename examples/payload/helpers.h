@@ -13,27 +13,9 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-extern crate libc;
+#ifndef _HELPERS_H_
+#define _HELPERS_H_
 
-#[macro_use]
-mod macros;
+uint32_t itoa(int i, char b[]);
 
-mod common;
-pub mod x86_64;
-pub mod instruction_emulator;
-pub mod interrupts;
-mod platform;
-mod win_hv_emulation;
-mod win_hv_emulation_defs;
-mod win_hv_platform;
-mod win_hv_platform_defs;
-mod win_hv_platform_defs_internal;
-mod win_memory;
-
-pub use common::*;
-pub use platform::*;
-pub mod memory;
-
-#[macro_use]
-extern crate bitflags;
-extern crate byteorder;
+#endif

@@ -11,8 +11,8 @@ of the native Windows Hypervisor Platform (WHP) API.
 
 Make sure to have at least:
 
-* Windows 10 build 17134 (or above)
-* Windows Server 1803 (or above)
+* Windows 10 build 17134 (RS5 or above)
+* Windows Server 1809 (RS5 or above)
 
 Enable the Windows Hypervisor Platform and reboot:
 
@@ -67,4 +67,4 @@ Here's what it does:
 * Reads the payload in memory (payload.img)
 * Sets up the MMIO / IO port intruction emulator and related callbacks
 * Starts the vCPU loop
-* Handles various type of exits: CPUID, MSR read / write, IO port, MMIO, Halt, etc
+* Handles various types of exits: CPUID, MSR read / write, IO port, MMIO, Halt, etc

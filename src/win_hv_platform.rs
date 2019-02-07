@@ -1,4 +1,5 @@
 // Copyright 2018 Cloudbase Solutions Srl
+// Copyright 2018-2019 CrowdStrike, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may
 // not use this file except in compliance with the License. You may obtain
@@ -92,6 +93,59 @@ extern "stdcall" {
         TranslateFlags: WHV_TRANSLATE_GVA_FLAGS,
         TranslationResult: *mut WHV_TRANSLATE_GVA_RESULT,
         Gpa: *mut WHV_GUEST_PHYSICAL_ADDRESS,
+    ) -> HRESULT;
+    pub fn WHvGetVirtualProcessorInterruptControllerState(
+        Partition: WHV_PARTITION_HANDLE,
+        VpIndex: UINT32,
+        State: *mut VOID,
+        StateSize: UINT32,
+        WrittenSize: *mut UINT32,
+    ) -> HRESULT;
+    pub fn WHvSetVirtualProcessorInterruptControllerState(
+        Partition: WHV_PARTITION_HANDLE,
+        VpIndex: UINT32,
+        State: *const VOID,
+        StateSize: UINT32,
+    ) -> HRESULT;
+    pub fn WHvRequestInterrupt(
+        Partition: WHV_PARTITION_HANDLE,
+        Interrupt: *const WHV_INTERRUPT_CONTROL,
+        InterruptControlSize: UINT32,
+    ) -> HRESULT;
+    pub fn WHvQueryGpaRangeDirtyBitmap(
+        Partition: WHV_PARTITION_HANDLE,
+        GuestAddress: WHV_GUEST_PHYSICAL_ADDRESS,
+        RangeSizeInBytes: UINT64,
+        Bitmap: *mut UINT64,
+        BitmapSizeInBytes: UINT32,
+    ) -> HRESULT;
+    pub fn WHvGetPartitionCounters(
+        Partition: WHV_PARTITION_HANDLE,
+        CounterSet: WHV_PARTITION_COUNTER_SET,
+        Buffer: *mut VOID,
+        BufferSizeInBytes: UINT32,
+        BytesWritten: *mut UINT32,
+    ) -> HRESULT;
+    pub fn WHvGetVirtualProcessorCounters(
+        Partition: WHV_PARTITION_HANDLE,
+        VpIndex: UINT32,
+        CounterSet: WHV_PROCESSOR_COUNTER_SET,
+        Buffer: *mut VOID,
+        BufferSizeInBytes: UINT32,
+        BytesWritten: *mut UINT32,
+    ) -> HRESULT;
+    pub fn WHvGetVirtualProcessorXsaveState(
+        Partition: WHV_PARTITION_HANDLE,
+        VpIndex: UINT32,
+        Buffer: *mut VOID,
+        BufferSizeInBytes: UINT32,
+        BytesWritten: *mut UINT32,
+    ) -> HRESULT;
+    pub fn WHvSetVirtualProcessorXsaveState(
+        Partition: WHV_PARTITION_HANDLE,
+        VpIndex: UINT32,
+        Buffer: *const VOID,
+        BufferSizeInBytes: UINT32,
     ) -> HRESULT;
 }
 

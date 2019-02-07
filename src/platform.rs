@@ -1,4 +1,5 @@
 // Copyright 2018 Cloudbase Solutions Srl
+// Copyright 2018-2019 CrowdStrike, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License"); you may
 // not use this file except in compliance with the License. You may obtain
@@ -13,12 +14,14 @@
 // under the License.
 
 use common::*;
+pub use x86_64::{LapicStateRaw, XsaveArea};
 use memory::*;
 use std;
 use std::cell::RefCell;
 use std::rc::Rc;
 use win_hv_platform::*;
 pub use win_hv_platform_defs::*;
+pub use win_hv_platform_defs_internal::*;
 
 pub fn get_capability(capability_code: WHV_CAPABILITY_CODE) -> Result<WHV_CAPABILITY, WHPError> {
     let mut capability: WHV_CAPABILITY = Default::default();
@@ -153,10 +156,7 @@ impl Partition {
         Ok(())
     }
 
-    pub fn create_virtual_processor(
-        &mut self,
-        index: UINT32,
-    ) -> Result<VirtualProcessor, WHPError> {
+    pub fn create_virtual_processor(&self, index: UINT32) -> Result<VirtualProcessor, WHPError> {
         check_result(unsafe {
             WHvCreateVirtualProcessor(*self.partition.borrow_mut().handle(), index, 0)
         })?;
@@ -278,7 +278,6 @@ impl VirtualProcessor {
                 reg_values.as_ptr(),
             )
         })?;
-
         Ok(())
     }
 
@@ -325,6 +324,158 @@ impl VirtualProcessor {
         })?;
         Ok((translation_result, gpa))
     }
+
+    pub fn query_gpa_range_dirty_bitmap(
+        &self,
+        gva: WHV_GUEST_PHYSICAL_ADDRESS,
+        range_size_in_bytes: UINT64,
+        bitmap_size_in_bytes: UINT32,
+    ) -> Result<(Box<[UINT64]>), WHPError> {
+        let num_elem = bitmap_size_in_bytes / std::mem::size_of::<UINT64>() as UINT32;
+        let mut bitmap: Box<[UINT64]> = vec![0; num_elem as usize].into_boxed_slice();
+
+        check_result(unsafe {
+            WHvQueryGpaRangeDirtyBitmap(
+                *self.partition.borrow().handle(),
+                gva,
+                range_size_in_bytes,
+                bitmap.as_mut_ptr(),
+                bitmap_size_in_bytes,
+            )
+        })?;
+        Ok(bitmap)
+    }
+
+    pub fn get_lapic(&self) -> Result<LapicStateRaw, WHPError> {
+        let mut state: LapicStateRaw = Default::default();
+        let mut written_size: UINT32 = 0;
+
+        check_result(unsafe {
+            WHvGetVirtualProcessorInterruptControllerState(
+                *self.partition.borrow().handle(),
+                self.index,
+                &mut state as *mut _ as *mut VOID,
+                std::mem::size_of::<LapicStateRaw>() as UINT32,
+                &mut written_size,
+            )
+        })?;
+        Ok(state)
+    }
+
+    pub fn set_lapic(&self, state: &LapicStateRaw) -> Result<(), WHPError> {
+        check_result(unsafe {
+            WHvSetVirtualProcessorInterruptControllerState(
+                *self.partition.borrow().handle(),
+                self.index,
+                state as *const _ as *const VOID,
+                std::mem::size_of::<LapicStateRaw>() as UINT32,
+            )
+        })?;
+        Ok(())
+    }
+
+    pub fn request_interrupt(&self, interrupt: &WHV_INTERRUPT_CONTROL) -> Result<(), WHPError> {
+        check_result(unsafe {
+            WHvRequestInterrupt(
+                *self.partition.borrow_mut().handle(),
+                interrupt,
+                std::mem::size_of::<WHV_INTERRUPT_CONTROL>() as UINT32,
+            )
+        })?;
+        Ok(())
+    }
+
+    #[allow(unreachable_patterns)] // Future-proof against new WHV_PARTITION_COUNTER_SET values
+    pub fn get_partition_counters(
+        &self,
+        partition_counter_set: WHV_PARTITION_COUNTER_SET,
+    ) -> Result<(WHV_PARTITION_COUNTERS), WHPError> {
+        let mut partition_counters: WHV_PARTITION_COUNTERS = Default::default();
+        let mut bytes_written: UINT32 = 0;
+
+        let buffer_size_in_bytes = match partition_counter_set {
+            WHV_PARTITION_COUNTER_SET::WHvPartitionCounterSetMemory => {
+                std::mem::size_of::<WHV_PARTITION_MEMORY_COUNTERS>() as UINT32
+            }
+            _ => panic!("Unknown partition counter set enum value"),
+        };
+
+        check_result(unsafe {
+            WHvGetPartitionCounters(
+                *self.partition.borrow().handle(),
+                partition_counter_set,
+                &mut partition_counters as *mut _ as *mut VOID,
+                buffer_size_in_bytes as UINT32,
+                &mut bytes_written,
+            )
+        })?;
+        Ok(partition_counters)
+    }
+
+    #[allow(unreachable_patterns)] // Future-proof against new WHV_PROCESSOR_COUNTER_SET values
+    pub fn get_processor_counters(
+        &self,
+        processor_counter_set: WHV_PROCESSOR_COUNTER_SET,
+    ) -> Result<WHV_PROCESSOR_COUNTERS, WHPError> {
+        let mut processor_counters: WHV_PROCESSOR_COUNTERS = Default::default();
+        let mut bytes_written: UINT32 = 0;
+
+        let buffer_size_in_bytes = match processor_counter_set {
+            WHV_PROCESSOR_COUNTER_SET::WHvProcessorCounterSetRuntime => {
+                std::mem::size_of::<WHV_PROCESSOR_RUNTIME_COUNTERS>()
+            }
+            WHV_PROCESSOR_COUNTER_SET::WHvProcessorCounterSetIntercepts => {
+                std::mem::size_of::<WHV_PROCESSOR_INTERCEPT_COUNTERS>()
+            }
+            WHV_PROCESSOR_COUNTER_SET::WHvProcessorCounterSetEvents => {
+                std::mem::size_of::<WHV_PROCESSOR_EVENT_COUNTERS>()
+            }
+            WHV_PROCESSOR_COUNTER_SET::WHvProcessorCounterSetApic => {
+                std::mem::size_of::<WHV_PROCESSOR_APIC_COUNTERS>()
+            }
+            _ => panic!("Unknown processor counter set enum value"),
+        };
+
+        check_result(unsafe {
+            WHvGetVirtualProcessorCounters(
+                *self.partition.borrow().handle(),
+                self.index,
+                processor_counter_set,
+                &mut processor_counters as *mut _ as *mut VOID,
+                buffer_size_in_bytes as UINT32,
+                &mut bytes_written,
+            )
+        })?;
+        Ok(processor_counters)
+    }
+
+    pub fn get_xsave_state(&self) -> Result<(XsaveArea), WHPError> {
+        let mut xsave_area: XsaveArea = Default::default();
+        let mut bytes_written: UINT32 = 0;
+
+        check_result(unsafe {
+            WHvGetVirtualProcessorXsaveState(
+                *self.partition.borrow().handle(),
+                self.index,
+                &mut xsave_area as *mut _ as *mut VOID,
+                std::mem::size_of::<XsaveArea>() as UINT32,
+                &mut bytes_written,
+            )
+        })?;
+        Ok(xsave_area)
+    }
+
+    pub fn set_xsave_state(&self, xsave_area: XsaveArea) -> Result<(), WHPError> {
+        check_result(unsafe {
+            WHvSetVirtualProcessorXsaveState(
+                *self.partition.borrow().handle(),
+                self.index,
+                &xsave_area as *const _ as *const VOID,
+                std::mem::size_of::<XsaveArea>() as UINT32,
+            )
+        })?;
+        Ok(())
+    }
 }
 
 impl Drop for VirtualProcessor {
@@ -343,6 +494,7 @@ mod tests {
 
     #[test]
     fn test_create_delete_partition() {
+        println!("CreateDeletePartition");
         let p: Partition = Partition::new().unwrap();
         drop(p);
     }
@@ -427,7 +579,6 @@ mod tests {
             &property,
         )
         .unwrap();
-        p.setup().unwrap();
     }
 
     #[test]
@@ -492,6 +643,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_set_get_virtual_processor_registers() {
         let mut p: Partition = Partition::new().unwrap();
         setup_vcpu_test(&mut p);
@@ -514,7 +666,7 @@ mod tests {
         unsafe {
             assert_eq!(
                 reg_values_out[0].Reg64, REG_VALUE,
-                "Registers values fo not match"
+                "Registers values do not match"
             );
         }
     }
@@ -582,5 +734,169 @@ mod tests {
         let vp = p.create_virtual_processor(vp_index).unwrap();
 
         assert_eq!(vp.index(), vp_index, "Index value not matching");
+    }
+
+    #[test]
+    #[allow(unused_variables)]
+    #[allow(unused_mut)]
+    fn test_request_interrupt() {
+        let mut p: Partition = Partition::new().unwrap();
+        setup_vcpu_test(&mut p);
+
+        let vp_index: UINT32 = 0;
+        let mut vp = p.create_virtual_processor(vp_index).unwrap();
+
+        let mut interrupt_control: WHV_INTERRUPT_CONTROL = Default::default();
+        // TriggerMode = 0 (Edge)
+        // DestinationMode = 0 (Logical)
+        // InterruptType = 0x0 (Fixed)
+        interrupt_control.TypeDestinationModeTriggerModeReserved = 0x000;
+        interrupt_control.Destination = 0;
+        interrupt_control.Vector = 0x37;
+        let interrupt_control_size = std::mem::size_of::<WHV_INTERRUPT_CONTROL>() as UINT32;
+        match vp.request_interrupt(&interrupt_control) {
+            Err(e) => println!("Error"),
+            Ok(()) => println!("Success"),
+        }
+    }
+
+    #[test]
+    fn test_get_set_xsave_state() {
+        let mut capability_features: WHV_CAPABILITY_FEATURES;
+        capability_features.AsUINT64 = 0;
+
+        let capability: WHV_CAPABILITY =
+            get_capability(WHV_CAPABILITY_CODE::WHvCapabilityCodeFeatures).unwrap();
+        unsafe {
+            capability_features = capability.Features;
+        }
+
+        if capability_features.Xsave() != 0 {
+            let mut p: Partition = Partition::new().unwrap();
+            setup_vcpu_test(&mut p);
+
+            let vp_index: UINT32 = 0;
+            let vp = p.create_virtual_processor(vp_index).unwrap();
+
+            let mut xsave_state: XsaveArea = Default::default();
+            assert_eq!(xsave_state.region[7], 0);
+
+            xsave_state = vp.get_xsave_state().unwrap();
+            assert_eq!(xsave_state.region[7], 0xffff);
+
+            vp.set_xsave_state(xsave_state).unwrap();
+        }
+    }
+
+    fn initialize_apic(p: &mut Partition) -> bool {
+        let capability: WHV_CAPABILITY =
+            get_capability(WHV_CAPABILITY_CODE::WHvCapabilityCodeFeatures).unwrap();
+        let features: WHV_CAPABILITY_FEATURES = unsafe { capability.Features };
+        let mut apic_enabled = false;
+
+        if features.LocalApicEmulation() != 0 {
+            let mut property: WHV_PARTITION_PROPERTY = Default::default();
+
+            property.LocalApicEmulationMode =
+                WHV_X64_LOCAL_APIC_EMULATION_MODE::WHvX64LocalApicEmulationModeXApic;
+
+            p.set_property(
+                WHV_PARTITION_PROPERTY_CODE::WHvPartitionPropertyCodeLocalApicEmulationMode,
+                &property,
+            )
+            .unwrap();
+
+            apic_enabled = true;
+        }
+
+        apic_enabled
+    }
+
+    use x86_64::*;
+    use interrupts::*;
+    #[test]
+    fn test_enable_get_set_apic() {
+        let mut p: Partition = Partition::new().unwrap();
+
+        let apic_enabled = initialize_apic(&mut p);
+
+        let mut property: WHV_PARTITION_PROPERTY = Default::default();
+        property.ProcessorCount = 1;
+
+        p.set_property(
+            WHV_PARTITION_PROPERTY_CODE::WHvPartitionPropertyCodeProcessorCount,
+            &property,
+        )
+        .unwrap();
+
+        p.setup().unwrap();
+
+        let vp_index: UINT32 = 0;
+        let vp = p.create_virtual_processor(vp_index).unwrap();
+
+        if apic_enabled == true {
+            let state: LapicStateRaw = vp.get_lapic().unwrap();
+            let icr0 = get_lapic_reg(&state, APIC_REG_OFFSET::InterruptCommand0);
+            assert_eq!(icr0, 0);
+
+            // Uses both get_lapic and set_lapic under the hood
+            set_reg_in_lapic(&vp, APIC_REG_OFFSET::InterruptCommand0, 0x40);
+
+            let state_out: LapicStateRaw = vp.get_lapic().unwrap();
+            let icr0 = get_lapic_reg(&state_out, APIC_REG_OFFSET::InterruptCommand0);
+            assert_eq!(icr0, 0x40);
+        }
+    }
+
+    #[test]
+    fn test_get_partition_counters() {
+        let mut p: Partition = Partition::new().unwrap();
+        setup_vcpu_test(&mut p);
+
+        let vp_index: UINT32 = 0;
+
+        let mut _vp = p.create_virtual_processor(vp_index).unwrap();
+
+        let counters: WHV_PARTITION_COUNTERS = _vp
+            .get_partition_counters(WHV_PARTITION_COUNTER_SET::WHvPartitionCounterSetMemory)
+            .unwrap();
+        let mem_counters = unsafe { counters.MemoryCounters };
+
+        assert_eq!(mem_counters.Mapped4KPageCount, 0);
+        assert_eq!(mem_counters.Mapped2MPageCount, 0);
+        assert_eq!(mem_counters.Mapped1GPageCount, 0);
+    }
+
+    #[test]
+    fn test_get_processor_counters() {
+        let mut p: Partition = Partition::new().unwrap();
+        setup_vcpu_test(&mut p);
+
+        let vp_index: UINT32 = 0;
+
+        let vp = p.create_virtual_processor(vp_index).unwrap();
+        let counters: WHV_PROCESSOR_COUNTERS = vp
+            .get_processor_counters(WHV_PROCESSOR_COUNTER_SET::WHvProcessorCounterSetRuntime)
+            .unwrap();
+        let runtime_counters = unsafe { counters.RuntimeCounters };
+        assert!(runtime_counters.TotalRuntime100ns > 0);
+
+        let counters: WHV_PROCESSOR_COUNTERS = vp
+            .get_processor_counters(WHV_PROCESSOR_COUNTER_SET::WHvProcessorCounterSetIntercepts)
+            .unwrap();
+        let intercept_counters = unsafe { counters.InterceptCounters };
+        assert_eq!(intercept_counters.PageInvalidations.Count, 0);
+
+        let counters: WHV_PROCESSOR_COUNTERS = vp
+            .get_processor_counters(WHV_PROCESSOR_COUNTER_SET::WHvProcessorCounterSetEvents)
+            .unwrap();
+        let event_counters = unsafe { counters.EventCounters };
+        assert_eq!(event_counters.PageFaultCount, 0);
+
+        let counters: WHV_PROCESSOR_COUNTERS = vp
+            .get_processor_counters(WHV_PROCESSOR_COUNTER_SET::WHvProcessorCounterSetApic)
+            .unwrap();
+        let apic_counters = unsafe { counters.ApicCounters };
+        assert_eq!(apic_counters.SentIpiCount, 0);
     }
 }
