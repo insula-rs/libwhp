@@ -21,34 +21,32 @@ use win_hv_platform_defs::*;
 pub type WHV_EMULATOR_IO_PORT_CALLBACK =
     extern "stdcall" fn(Context: *mut VOID, IoAccess: *mut WHV_EMULATOR_IO_ACCESS_INFO) -> HRESULT;
 
-pub type WHV_EMULATOR_MEMORY_CALLBACK =
-    extern "stdcall" fn(Context: *mut VOID, MemoryAccess: *mut WHV_EMULATOR_MEMORY_ACCESS_INFO)
-        -> HRESULT;
+pub type WHV_EMULATOR_MEMORY_CALLBACK = extern "stdcall" fn(
+    Context: *mut VOID,
+    MemoryAccess: *mut WHV_EMULATOR_MEMORY_ACCESS_INFO,
+) -> HRESULT;
 
-pub type WHV_EMULATOR_GET_VIRTUAL_PROCESSOR_REGISTERS_CALLBACK =
-    extern "stdcall" fn(
-        Context: *mut VOID,
-        RegisterNames: *const WHV_REGISTER_NAME,
-        RegisterCount: UINT32,
-        RegisterValues: *mut WHV_REGISTER_VALUE,
-    ) -> HRESULT;
+pub type WHV_EMULATOR_GET_VIRTUAL_PROCESSOR_REGISTERS_CALLBACK = extern "stdcall" fn(
+    Context: *mut VOID,
+    RegisterNames: *const WHV_REGISTER_NAME,
+    RegisterCount: UINT32,
+    RegisterValues: *mut WHV_REGISTER_VALUE,
+) -> HRESULT;
 
-pub type WHV_EMULATOR_SET_VIRTUAL_PROCESSOR_REGISTERS_CALLBACK =
-    extern "stdcall" fn(
-        Context: *mut VOID,
-        RegisterNames: *const WHV_REGISTER_NAME,
-        RegisterCount: UINT32,
-        RegisterValues: *const WHV_REGISTER_VALUE,
-    ) -> HRESULT;
+pub type WHV_EMULATOR_SET_VIRTUAL_PROCESSOR_REGISTERS_CALLBACK = extern "stdcall" fn(
+    Context: *mut VOID,
+    RegisterNames: *const WHV_REGISTER_NAME,
+    RegisterCount: UINT32,
+    RegisterValues: *const WHV_REGISTER_VALUE,
+) -> HRESULT;
 
-pub type WHV_EMULATOR_TRANSLATE_GVA_PAGE_CALLBACK =
-    extern "stdcall" fn(
-        Context: *mut VOID,
-        Gva: WHV_GUEST_VIRTUAL_ADDRESS,
-        TranslateFlags: WHV_TRANSLATE_GVA_FLAGS,
-        TranslationResult: *mut WHV_TRANSLATE_GVA_RESULT_CODE,
-        Gpa: *mut WHV_GUEST_PHYSICAL_ADDRESS,
-    ) -> HRESULT;
+pub type WHV_EMULATOR_TRANSLATE_GVA_PAGE_CALLBACK = extern "stdcall" fn(
+    Context: *mut VOID,
+    Gva: WHV_GUEST_VIRTUAL_ADDRESS,
+    TranslateFlags: WHV_TRANSLATE_GVA_FLAGS,
+    TranslationResult: *mut WHV_TRANSLATE_GVA_RESULT_CODE,
+    Gpa: *mut WHV_GUEST_PHYSICAL_ADDRESS,
+) -> HRESULT;
 
 #[derive(Copy, Clone)]
 #[allow(non_snake_case)]

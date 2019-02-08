@@ -331,7 +331,8 @@ impl Drop for VirtualProcessor {
     fn drop(&mut self) {
         check_result(unsafe {
             WHvDeleteVirtualProcessor(*self.partition.borrow_mut().handle(), self.index)
-        }).unwrap();
+        })
+        .unwrap();
     }
 }
 
@@ -424,7 +425,8 @@ mod tests {
         p.set_property(
             WHV_PARTITION_PROPERTY_CODE::WHvPartitionPropertyCodeProcessorCount,
             &property,
-        ).unwrap();
+        )
+        .unwrap();
         p.setup().unwrap();
     }
 
@@ -448,7 +450,8 @@ mod tests {
         p.set_property(
             WHV_PARTITION_PROPERTY_CODE::WHvPartitionPropertyCodeProcessorCount,
             &property,
-        ).unwrap();
+        )
+        .unwrap();
         p.setup().unwrap();
     }
 
@@ -526,12 +529,14 @@ mod tests {
 
         let mem = VirtualMemory::new(SIZE as usize).unwrap();
 
-        let mapping = p.map_gpa_range(
-            &mem,
-            guest_address,
-            SIZE,
-            WHV_MAP_GPA_RANGE_FLAGS::WHvMapGpaRangeFlagRead,
-        ).unwrap();
+        let mapping = p
+            .map_gpa_range(
+                &mem,
+                guest_address,
+                SIZE,
+                WHV_MAP_GPA_RANGE_FLAGS::WHvMapGpaRangeFlagRead,
+            )
+            .unwrap();
 
         assert_eq!(mapping.get_size(), SIZE);
         assert_eq!(mapping.get_source_address(), mem.as_ptr());
@@ -551,10 +556,12 @@ mod tests {
         let vp = p.create_virtual_processor(vp_index).unwrap();
 
         let gva: WHV_GUEST_PHYSICAL_ADDRESS = 0;
-        let (translation_result, gpa) = vp.translate_gva(
-            gva,
-            WHV_TRANSLATE_GVA_FLAGS::WHvTranslateGvaFlagValidateRead,
-        ).unwrap();
+        let (translation_result, gpa) = vp
+            .translate_gva(
+                gva,
+                WHV_TRANSLATE_GVA_FLAGS::WHvTranslateGvaFlagValidateRead,
+            )
+            .unwrap();
 
         assert_eq!(
             translation_result.ResultCode,

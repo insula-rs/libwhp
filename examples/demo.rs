@@ -54,14 +54,16 @@ fn main() {
 
     let guest_address: WHV_GUEST_PHYSICAL_ADDRESS = 0;
 
-    let _mapping = p.map_gpa_range(
-        &payload_mem,
-        guest_address,
-        payload_mem.get_size() as UINT64,
-        WHV_MAP_GPA_RANGE_FLAGS::WHvMapGpaRangeFlagRead
-            | WHV_MAP_GPA_RANGE_FLAGS::WHvMapGpaRangeFlagWrite
-            | WHV_MAP_GPA_RANGE_FLAGS::WHvMapGpaRangeFlagExecute,
-    ).unwrap();
+    let _mapping = p
+        .map_gpa_range(
+            &payload_mem,
+            guest_address,
+            payload_mem.get_size() as UINT64,
+            WHV_MAP_GPA_RANGE_FLAGS::WHvMapGpaRangeFlagRead
+                | WHV_MAP_GPA_RANGE_FLAGS::WHvMapGpaRangeFlagWrite
+                | WHV_MAP_GPA_RANGE_FLAGS::WHvMapGpaRangeFlagExecute,
+        )
+        .unwrap();
 
     let mut vp = p.create_virtual_processor(0).unwrap();
 
@@ -183,11 +185,13 @@ fn handle_mmio_exit<T: EmulatorCallbacks>(
     exit_context: &WHV_RUN_VP_EXIT_CONTEXT,
 ) {
     let mem_access_ctx = unsafe { &exit_context.anon_union.MemoryAccess };
-    let _status = e.try_mmio_emulation(
-        std::ptr::null_mut(),
-        &exit_context.VpContext,
-        mem_access_ctx,
-    ).unwrap();
+    let _status = e
+        .try_mmio_emulation(
+            std::ptr::null_mut(),
+            &exit_context.VpContext,
+            mem_access_ctx,
+        )
+        .unwrap();
 }
 
 fn handle_io_port_exit<T: EmulatorCallbacks>(
@@ -195,11 +199,13 @@ fn handle_io_port_exit<T: EmulatorCallbacks>(
     exit_context: &WHV_RUN_VP_EXIT_CONTEXT,
 ) {
     let io_port_access_ctx = unsafe { &exit_context.anon_union.IoPortAccess };
-    let _status = e.try_io_emulation(
-        std::ptr::null_mut(),
-        &exit_context.VpContext,
-        io_port_access_ctx,
-    ).unwrap();
+    let _status = e
+        .try_io_emulation(
+            std::ptr::null_mut(),
+            &exit_context.VpContext,
+            io_port_access_ctx,
+        )
+        .unwrap();
 }
 
 fn setup_partition(p: &mut Partition) {
@@ -208,7 +214,8 @@ fn setup_partition(p: &mut Partition) {
     p.set_property(
         WHV_PARTITION_PROPERTY_CODE::WHvPartitionPropertyCodeProcessorCount,
         &property,
-    ).unwrap();
+    )
+    .unwrap();
 
     property = Default::default();
     unsafe {
@@ -220,7 +227,8 @@ fn setup_partition(p: &mut Partition) {
     p.set_property(
         WHV_PARTITION_PROPERTY_CODE::WHvPartitionPropertyCodeExtendedVmExits,
         &property,
-    ).unwrap();
+    )
+    .unwrap();
 
     let cpuids: [UINT32; 1] = [1];
     p.set_property_cpuid_exits(&cpuids).unwrap();
@@ -424,7 +432,8 @@ impl<'a> EmulatorCallbacks for SampleCallbacks<'a> {
         translation_result: &mut WHV_TRANSLATE_GVA_RESULT_CODE,
         gpa: &mut WHV_GUEST_PHYSICAL_ADDRESS,
     ) -> HRESULT {
-        let (translation_result1, gpa1) = self.vp_ref_cell
+        let (translation_result1, gpa1) = self
+            .vp_ref_cell
             .borrow()
             .translate_gva(gva, translate_flags)
             .unwrap();

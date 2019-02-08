@@ -396,11 +396,13 @@ mod tests {
         let context = CString::new(callbacks.expected_context).unwrap();
 
         let mut e = Emulator::new(&mut callbacks).unwrap();
-        let _return_status = e.try_io_emulation(
-            context.as_ptr() as *const _ as *mut VOID,
-            &vp_context,
-            &io_instruction_context,
-        ).unwrap();
+        let _return_status = e
+            .try_io_emulation(
+                context.as_ptr() as *const _ as *mut VOID,
+                &vp_context,
+                &io_instruction_context,
+            )
+            .unwrap();
     }
 
     #[test]
@@ -412,11 +414,13 @@ mod tests {
         let context = CString::new(callbacks.expected_context).unwrap();
 
         let mut e = Emulator::new(&mut callbacks).unwrap();
-        let _return_status = e.try_mmio_emulation(
-            context.as_ptr() as *const _ as *mut VOID,
-            &vp_context,
-            &mmio_instruction_context,
-        ).unwrap();
+        let _return_status = e
+            .try_mmio_emulation(
+                context.as_ptr() as *const _ as *mut VOID,
+                &vp_context,
+                &mmio_instruction_context,
+            )
+            .unwrap();
     }
 
     #[test]
