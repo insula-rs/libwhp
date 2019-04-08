@@ -879,6 +879,7 @@ pub struct WHV_RUN_VP_EXIT_CONTEXT {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Default)]
 #[allow(non_snake_case)]
+#[repr(align(16))]
 #[repr(C)]
 pub struct WHV_UINT128 {
     pub Low64: UINT64,
