@@ -14,7 +14,6 @@
 // under the License.
 
 use common::*;
-pub use x86_64::{LapicStateRaw, XsaveArea};
 use memory::*;
 use std;
 use std::cell::RefCell;
@@ -22,6 +21,7 @@ use std::rc::Rc;
 use win_hv_platform::*;
 pub use win_hv_platform_defs::*;
 pub use win_hv_platform_defs_internal::*;
+pub use x86_64::{LapicStateRaw, XsaveArea};
 
 pub fn get_capability(capability_code: WHV_CAPABILITY_CODE) -> Result<WHV_CAPABILITY, WHPError> {
     let mut capability: WHV_CAPABILITY = Default::default();
@@ -812,8 +812,8 @@ mod tests {
         apic_enabled
     }
 
-    use x86_64::*;
     use interrupts::*;
+    use x86_64::*;
     #[test]
     fn test_enable_get_set_apic() {
         let mut p: Partition = Partition::new().unwrap();

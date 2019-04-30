@@ -25,8 +25,8 @@ use std::result;
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 
 use common::WHPError;
-use x86_64::{LapicStateRaw, APIC_REG_OFFSET};
 use platform::VirtualProcessor;
+use x86_64::{LapicStateRaw, APIC_REG_OFFSET};
 
 #[derive(Debug)]
 pub enum Error {

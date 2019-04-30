@@ -19,7 +19,6 @@ extern crate libc;
 mod macros;
 
 mod common;
-pub mod x86_64;
 pub mod instruction_emulator;
 pub mod interrupts;
 mod platform;
@@ -29,6 +28,7 @@ mod win_hv_platform;
 mod win_hv_platform_defs;
 mod win_hv_platform_defs_internal;
 mod win_memory;
+pub mod x86_64;
 
 pub use common::*;
 pub use platform::*;
