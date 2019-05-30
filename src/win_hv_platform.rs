@@ -534,12 +534,14 @@ mod tests {
 
                 assert_eq!(result, S_OK, "WHvTranslateGva failed with 0x{:X}", result);
 
-                assert_eq!(
-                    translation_result.ResultCode,
-                    WHV_TRANSLATE_GVA_RESULT_CODE::WHvTranslateGvaResultGpaUnmapped,
-                    "Unexpected translation result code {:?}",
-                    translation_result.ResultCode
-                );
+                // This API changed, it used to return GpaUnmapped, now it runs Success.
+                // So support both versions for now.
+                //
+                let result = translation_result.ResultCode;
+                assert!(
+                    result == WHV_TRANSLATE_GVA_RESULT_CODE::WHvTranslateGvaResultGpaUnmapped ||
+                    result == WHV_TRANSLATE_GVA_RESULT_CODE::WHvTranslateGvaResultSuccess,
+                    "Unexpected translation result code {:?}", result);
 
                 assert_eq!(gpa, 0, "Unexpected GPA value");
             });
