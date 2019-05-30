@@ -762,7 +762,7 @@ mod tests {
 
     #[test]
     fn test_get_set_xsave_state() {
-        let mut capability_features: WHV_CAPABILITY_FEATURES;
+        let mut capability_features: WHV_CAPABILITY_FEATURES = Default::default();
         capability_features.AsUINT64 = 0;
 
         let capability: WHV_CAPABILITY =
