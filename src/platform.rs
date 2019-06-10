@@ -190,6 +190,17 @@ impl Partition {
             flags: flags,
         })
     }
+
+    pub fn request_interrupt(&self, interrupt: &WHV_INTERRUPT_CONTROL) -> Result<(), WHPError> {
+        check_result(unsafe {
+            WHvRequestInterrupt(
+                *self.partition.borrow().handle(),
+                interrupt,
+                std::mem::size_of::<WHV_INTERRUPT_CONTROL>() as UINT32,
+            )
+        })?;
+        Ok(())
+    }
 }
 
 pub struct GPARangeMapping {
