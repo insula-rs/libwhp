@@ -23,7 +23,7 @@ pub type WHV_EMULATOR_HANDLE = *mut VOID;
 #[allow(non_snake_case)]
 #[repr(C)]
 pub struct WHV_EMULATOR_STATUS {
-    AsUINT32: UINT32,
+    pub AsUINT32: UINT32,
 }
 
 bitfield!(WHV_EMULATOR_STATUS AsUINT32: UINT32[

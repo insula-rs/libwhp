@@ -1059,17 +1059,17 @@ pub struct WHV_X64_FP_REGISTER {
 #[allow(non_snake_case)]
 #[repr(C)]
 pub struct WHV_X64_FP_CONTROL_STATUS_REGISTER_32bit_mode_anon_struct {
-    LastFpEip: UINT32,
-    LastFpCs: UINT16,
-    Reserved2: UINT16,
+    pub LastFpEip: UINT32,
+    pub LastFpCs: UINT16,
+    pub Reserved2: UINT16,
 }
 
 #[derive(Copy, Clone)]
 #[allow(non_snake_case)]
 #[repr(C)]
 pub union WHV_X64_FP_CONTROL_STATUS_REGISTER_anon_union {
-    LastFpRip: UINT64,
-    anon_struct: WHV_X64_FP_CONTROL_STATUS_REGISTER_32bit_mode_anon_struct,
+    pub LastFpRip: UINT64,
+    pub anon_struct: WHV_X64_FP_CONTROL_STATUS_REGISTER_32bit_mode_anon_struct,
 }
 
 impl Default for WHV_X64_FP_CONTROL_STATUS_REGISTER_anon_union {
@@ -1082,12 +1082,12 @@ impl Default for WHV_X64_FP_CONTROL_STATUS_REGISTER_anon_union {
 #[allow(non_snake_case)]
 #[repr(C)]
 pub struct WHV_X64_FP_CONTROL_STATUS_REGISTER_anon_struct {
-    FpControl: UINT16,
-    FpStatus: UINT16,
-    FpTag: UINT8,
-    Reserved: UINT8,
-    LastFpOp: UINT16,
-    anon_union: WHV_X64_FP_CONTROL_STATUS_REGISTER_anon_union,
+    pub FpControl: UINT16,
+    pub FpStatus: UINT16,
+    pub FpTag: UINT8,
+    pub Reserved: UINT8,
+    pub LastFpOp: UINT16,
+    pub anon_union: WHV_X64_FP_CONTROL_STATUS_REGISTER_anon_union,
 }
 
 #[derive(Copy, Clone)]
@@ -1108,8 +1108,8 @@ impl Default for WHV_X64_FP_CONTROL_STATUS_REGISTER {
 #[allow(non_snake_case)]
 #[repr(C)]
 pub struct WHV_X64_XMM_CONTROL_STATUS_REGISTER_32bit_mode_anon_struct {
-    LastFpDp: UINT32,
-    LastFpDs: UINT16,
+    pub LastFpDp: UINT32,
+    pub LastFpDs: UINT16,
     Reserved: UINT16,
 }
 
@@ -1117,8 +1117,8 @@ pub struct WHV_X64_XMM_CONTROL_STATUS_REGISTER_32bit_mode_anon_struct {
 #[allow(non_snake_case)]
 #[repr(C)]
 pub union WHV_X64_XMM_CONTROL_STATUS_REGISTER_anon_union {
-    LastFpRdp: UINT64,
-    anon_struct: WHV_X64_XMM_CONTROL_STATUS_REGISTER_32bit_mode_anon_struct,
+    pub LastFpRdp: UINT64,
+    pub anon_struct: WHV_X64_XMM_CONTROL_STATUS_REGISTER_32bit_mode_anon_struct,
 }
 
 impl Default for WHV_X64_XMM_CONTROL_STATUS_REGISTER_anon_union {
@@ -1131,9 +1131,9 @@ impl Default for WHV_X64_XMM_CONTROL_STATUS_REGISTER_anon_union {
 #[allow(non_snake_case)]
 #[repr(C)]
 pub struct WHV_X64_XMM_CONTROL_STATUS_REGISTER_anon_struct {
-    XmmStatusControl: UINT32,
-    XmmStatusControlMask: UINT32,
-    anon_union: WHV_X64_XMM_CONTROL_STATUS_REGISTER_anon_union,
+    pub XmmStatusControl: UINT32,
+    pub XmmStatusControlMask: UINT32,
+    pub anon_union: WHV_X64_XMM_CONTROL_STATUS_REGISTER_anon_union,
 }
 
 #[derive(Copy, Clone)]

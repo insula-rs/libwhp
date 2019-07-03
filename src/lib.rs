@@ -18,10 +18,10 @@ extern crate libc;
 #[macro_use]
 mod macros;
 
-mod common;
+pub mod common;
 pub mod instruction_emulator;
 pub mod interrupts;
-mod platform;
+pub mod platform;
 mod win_hv_emulation;
 mod win_hv_emulation_defs;
 mod win_hv_platform;

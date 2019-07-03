@@ -38,7 +38,7 @@ pub fn get_capability(capability_code: WHV_CAPABILITY_CODE) -> Result<WHV_CAPABI
     Ok(capability)
 }
 
-struct PartitionHandle {
+pub struct PartitionHandle {
     handle: WHV_PARTITION_HANDLE,
 }
 
