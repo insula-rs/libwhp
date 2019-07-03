@@ -21,29 +21,24 @@ use win_hv_platform_defs::*;
 pub trait EmulatorCallbacks {
     fn io_port(
         &mut self,
-        context: *mut VOID,
         io_access: &mut WHV_EMULATOR_IO_ACCESS_INFO,
     ) -> HRESULT;
     fn memory(
         &mut self,
-        context: *mut VOID,
         memory_access: &mut WHV_EMULATOR_MEMORY_ACCESS_INFO,
     ) -> HRESULT;
     fn get_virtual_processor_registers(
         &mut self,
-        context: *mut VOID,
         register_names: &[WHV_REGISTER_NAME],
         register_values: &mut [WHV_REGISTER_VALUE],
     ) -> HRESULT;
     fn set_virtual_processor_registers(
         &mut self,
-        context: *mut VOID,
         register_names: &[WHV_REGISTER_NAME],
         register_values: &[WHV_REGISTER_VALUE],
     ) -> HRESULT;
     fn translate_gva_page(
         &mut self,
-        context: *mut VOID,
         gva: WHV_GUEST_VIRTUAL_ADDRESS,
         translate_flags: WHV_TRANSLATE_GVA_FLAGS,
         translation_result: &mut WHV_TRANSLATE_GVA_RESULT_CODE,
@@ -53,21 +48,19 @@ pub trait EmulatorCallbacks {
 
 #[repr(C)]
 struct CallbacksContext<'a, T: EmulatorCallbacks + 'a> {
-    callbacks: &'a mut T,
-    context: *mut VOID,
+    emulator: &'a Emulator<T>,
+    context: &'a mut T,
 }
 
-pub struct Emulator<'a, T: EmulatorCallbacks + 'a> {
-    emulator: WHV_EMULATOR_HANDLE,
-    callbacks: &'a mut T,
+pub struct Emulator<T: EmulatorCallbacks> {
+    emulator_handle: WHV_EMULATOR_HANDLE,
+    dummy: std::marker::PhantomData<T>,
 }
 
-impl<'a, T: 'a> Emulator<'a, T>
-where
-    T: EmulatorCallbacks,
-{
-    pub fn new(callbacks: &mut T) -> Result<Emulator<T>, WHPError> {
-        let mut emulator: WHV_EMULATOR_HANDLE = std::ptr::null_mut();
+unsafe impl<T: EmulatorCallbacks> Send for Emulator<T> {}
+
+impl<T: EmulatorCallbacks> Emulator<T> {
+    pub fn new() -> Result<Self, WHPError> {
 
         let native_callbacks = WHV_EMULATOR_CALLBACKS {
             Size: std::mem::size_of::<WHV_EMULATOR_CALLBACKS>() as UINT32,
@@ -79,10 +72,11 @@ where
             WHvEmulatorTranslateGvaPage: Emulator::<T>::translate_gva_page_cb,
         };
 
-        check_result(unsafe { WHvEmulatorCreateEmulator(&native_callbacks, &mut emulator) })?;
+        let mut emulator_handle: WHV_EMULATOR_HANDLE = std::ptr::null_mut();
+        check_result(unsafe { WHvEmulatorCreateEmulator(&native_callbacks, &mut emulator_handle) })?;
         Ok(Emulator {
-            emulator: emulator,
-            callbacks: callbacks,
+            emulator_handle: emulator_handle,
+            dummy: Default::default(),
         })
     }
 
@@ -101,7 +95,7 @@ where
     ) -> HRESULT {
         Emulator::<T>::catch_unwind_hres(|| {
             let cc = unsafe { &mut *(context as *mut CallbacksContext<T>) };
-            cc.callbacks.io_port(cc.context, unsafe { &mut *io_access })
+            T::io_port(cc.context, unsafe { &mut *io_access })
         })
     }
 
@@ -111,8 +105,7 @@ where
     ) -> HRESULT {
         Emulator::<T>::catch_unwind_hres(|| {
             let cc = unsafe { &mut *(context as *mut CallbacksContext<T>) };
-            cc.callbacks
-                .memory(cc.context, unsafe { &mut *memory_access })
+            T::memory(cc.context, unsafe { &mut *memory_access })
         })
     }
 
@@ -124,7 +117,7 @@ where
     ) -> HRESULT {
         Emulator::<T>::catch_unwind_hres(|| {
             let cc = unsafe { &mut *(context as *mut CallbacksContext<T>) };
-            cc.callbacks.get_virtual_processor_registers(
+            T::get_virtual_processor_registers(
                 cc.context,
                 unsafe { std::slice::from_raw_parts(register_names, register_count as usize) },
                 unsafe { std::slice::from_raw_parts_mut(register_values, register_count as usize) },
@@ -140,7 +133,7 @@ where
     ) -> HRESULT {
         Emulator::<T>::catch_unwind_hres(|| {
             let cc = unsafe { &mut *(context as *mut CallbacksContext<T>) };
-            cc.callbacks.set_virtual_processor_registers(
+            T::set_virtual_processor_registers(
                 cc.context,
                 unsafe { std::slice::from_raw_parts(register_names, register_count as usize) },
                 unsafe { std::slice::from_raw_parts(register_values, register_count as usize) },
@@ -157,7 +150,7 @@ where
     ) -> HRESULT {
         Emulator::<T>::catch_unwind_hres(|| {
             let cc = unsafe { &mut *(context as *mut CallbacksContext<T>) };
-            cc.callbacks.translate_gva_page(
+            T::translate_gva_page(
                 cc.context,
                 gva,
                 translate_flags,
@@ -168,20 +161,20 @@ where
     }
 
     pub fn try_io_emulation(
-        &mut self,
-        context: *mut VOID,
+        &self,
+        context: &mut T,
         vp_context: &WHV_VP_EXIT_CONTEXT,
         io_instruction_context: &WHV_X64_IO_PORT_ACCESS_CONTEXT,
     ) -> Result<WHV_EMULATOR_STATUS, WHPError> {
         let mut callbacks_context = CallbacksContext {
-            callbacks: self.callbacks,
+            emulator: self,
             context: context,
         };
 
         let mut return_status: WHV_EMULATOR_STATUS = Default::default();
         check_result(unsafe {
             WHvEmulatorTryIoEmulation(
-                self.emulator,
+                self.emulator_handle,
                 &mut callbacks_context as *mut _ as *mut VOID,
                 vp_context,
                 io_instruction_context,
@@ -191,21 +184,21 @@ where
         Ok(return_status)
     }
 
-    pub fn try_mmio_emulation(
-        &mut self,
-        context: *mut VOID,
+    pub fn try_mmio_emulation<'a>(
+        &self,
+        context: &'a mut T,
         vp_context: &WHV_VP_EXIT_CONTEXT,
         mmio_instruction_context: &WHV_MEMORY_ACCESS_CONTEXT,
     ) -> Result<WHV_EMULATOR_STATUS, WHPError> {
         let mut callbacks_context = CallbacksContext {
-            callbacks: self.callbacks,
+            emulator: self,
             context: context,
         };
 
         let mut return_status: WHV_EMULATOR_STATUS = Default::default();
         check_result(unsafe {
             WHvEmulatorTryMmioEmulation(
-                self.emulator,
+                self.emulator_handle,
                 &mut callbacks_context as *mut _ as *mut VOID,
                 vp_context,
                 mmio_instruction_context,
@@ -216,21 +209,16 @@ where
     }
 }
 
-impl<'a, T: 'a> Drop for Emulator<'a, T>
-where
-    T: EmulatorCallbacks,
+impl<T: EmulatorCallbacks> Drop for Emulator<T>
 {
     fn drop(&mut self) {
-        check_result(unsafe { WHvEmulatorDestroyEmulator(self.emulator) }).unwrap();
+        check_result(unsafe { WHvEmulatorDestroyEmulator(self.emulator_handle) }).unwrap();
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std;
-    use std::ffi::CStr;
-    use std::ffi::CString;
 
     struct TestCallbacks<'a> {
         expected_context: &'a str,
@@ -245,11 +233,10 @@ mod tests {
     }
 
     impl<'a> TestCallbacks<'a> {
-        fn check_context(&self, context: *const VOID) {
-            let context_value = unsafe { CStr::from_ptr(context as *const std::os::raw::c_char) };
+        fn check_context(&self) {
             assert_eq!(
-                context_value.to_str(),
-                Ok(self.expected_context),
+                self.expected_context,
+                "context",
                 "Unexpected context value"
             );
         }
@@ -275,35 +262,34 @@ mod tests {
     impl<'a> EmulatorCallbacks for TestCallbacks<'a> {
         fn io_port(
             &mut self,
-            context: *mut VOID,
             io_access: &mut WHV_EMULATOR_IO_ACCESS_INFO,
         ) -> HRESULT {
-            self.check_context(context);
+            self.check_context();
             assert_eq!(
                 io_access.AccessSize, self.expected_io_access_size,
                 "Unexpected AccessSize value"
             );
+            io_access.AccessSize = !io_access.AccessSize;
             S_OK
         }
         fn memory(
             &mut self,
-            context: *mut VOID,
             memory_access: &mut WHV_EMULATOR_MEMORY_ACCESS_INFO,
         ) -> HRESULT {
-            self.check_context(context);
+            self.check_context();
             assert_eq!(
                 memory_access.AccessSize, self.expected_memory_access_size,
                 "Unexpected AccessSize value"
             );
+            memory_access.AccessSize = !memory_access.AccessSize;
             S_OK
         }
         fn get_virtual_processor_registers(
             &mut self,
-            context: *mut VOID,
             register_names: &[WHV_REGISTER_NAME],
             register_values: &mut [WHV_REGISTER_VALUE],
         ) -> HRESULT {
-            self.check_context(context);
+            self.check_context();
             assert_eq!(
                 register_names.len(),
                 self.expected_reg_size as usize,
@@ -330,11 +316,10 @@ mod tests {
         }
         fn set_virtual_processor_registers(
             &mut self,
-            context: *mut VOID,
             register_names: &[WHV_REGISTER_NAME],
             register_values: &[WHV_REGISTER_VALUE],
         ) -> HRESULT {
-            self.check_context(context);
+            self.check_context();
             assert_eq!(
                 register_names.len(),
                 self.expected_reg_size as usize,
@@ -363,13 +348,12 @@ mod tests {
         }
         fn translate_gva_page(
             &mut self,
-            context: *mut VOID,
             _gva: WHV_GUEST_VIRTUAL_ADDRESS,
             _translate_flags: WHV_TRANSLATE_GVA_FLAGS,
             translation_result: &mut WHV_TRANSLATE_GVA_RESULT_CODE,
             gpa: &mut WHV_GUEST_PHYSICAL_ADDRESS,
         ) -> HRESULT {
-            self.check_context(context);
+            self.check_context();
             *gpa = self.returned_gpa;
             *translation_result = self.returned_translation_result;
             S_OK
@@ -378,8 +362,7 @@ mod tests {
 
     #[test]
     fn test_create_delete_emulator() {
-        let mut callbacks = TestCallbacks::default();
-        let e = Emulator::new(&mut callbacks).unwrap();
+        let e = Emulator::<TestCallbacks>::new().unwrap();
         drop(e);
     }
 
@@ -393,12 +376,10 @@ mod tests {
 
         let mut callbacks = TestCallbacks::default();
 
-        let context = CString::new(callbacks.expected_context).unwrap();
-
-        let mut e = Emulator::new(&mut callbacks).unwrap();
+        let e = Emulator::<TestCallbacks>::new().unwrap();
         let _return_status = e
             .try_io_emulation(
-                context.as_ptr() as *const _ as *mut VOID,
+                &mut callbacks,
                 &vp_context,
                 &io_instruction_context,
             )
@@ -411,12 +392,11 @@ mod tests {
         let mmio_instruction_context: WHV_MEMORY_ACCESS_CONTEXT = Default::default();
 
         let mut callbacks = TestCallbacks::default();
-        let context = CString::new(callbacks.expected_context).unwrap();
 
-        let mut e = Emulator::new(&mut callbacks).unwrap();
+        let e = Emulator::<TestCallbacks>::new().unwrap();
         let _return_status = e
             .try_mmio_emulation(
-                context.as_ptr() as *const _ as *mut VOID,
+                &mut callbacks,
                 &vp_context,
                 &mmio_instruction_context,
             )
@@ -430,21 +410,23 @@ mod tests {
             expected_io_access_size: EXPECTED_IO_ACCESS_SIZE,
             ..Default::default()
         };
-        let context = CString::new(callbacks.expected_context).unwrap();
+
+        let mut e = Emulator::<TestCallbacks>::new().unwrap();
 
         let mut callbacks_context = CallbacksContext {
-            callbacks: &mut callbacks,
-            context: context.as_ptr() as *const _ as *mut VOID,
+            emulator: &mut e,
+            context: &mut callbacks,
         };
 
         let mut io_access: WHV_EMULATOR_IO_ACCESS_INFO = Default::default();
         io_access.AccessSize = EXPECTED_IO_ACCESS_SIZE;
 
         let ret = Emulator::<TestCallbacks>::io_port_cb(
-            &mut callbacks_context as *mut _ as *mut VOID,
+            (&mut callbacks_context) as *mut _ as *mut VOID,
             &mut io_access,
         );
         assert_eq!(ret, S_OK, "Unexpected io_port_cb return value");
+        assert_eq!(io_access.AccessSize, !EXPECTED_IO_ACCESS_SIZE, "Unexpected AccessSizee");
     }
 
     #[test]
@@ -454,11 +436,12 @@ mod tests {
             expected_memory_access_size: EXPECTED_MEMORY_ACCESS_SIZE,
             ..Default::default()
         };
-        let context = CString::new(callbacks.expected_context).unwrap();
+
+        let mut e = Emulator::<TestCallbacks>::new().unwrap();
 
         let mut callbacks_context = CallbacksContext {
-            callbacks: &mut callbacks,
-            context: context.as_ptr() as *const _ as *mut VOID,
+            emulator: &mut e,
+            context: &mut callbacks,
         };
 
         let mut mem_access: WHV_EMULATOR_MEMORY_ACCESS_INFO = Default::default();
@@ -469,6 +452,7 @@ mod tests {
             &mut mem_access,
         );
         assert_eq!(ret, S_OK, "Unexpected memory_cb return value");
+        assert_eq!(mem_access.AccessSize, !EXPECTED_MEMORY_ACCESS_SIZE, "Unexpected AccessSizee");
     }
 
     #[test]
@@ -488,11 +472,11 @@ mod tests {
             ..Default::default()
         };
 
-        let context = CString::new(callbacks.expected_context).unwrap();
+        let mut e = Emulator::<TestCallbacks>::new().unwrap();
 
         let mut callbacks_context = CallbacksContext {
-            callbacks: &mut callbacks,
-            context: context.as_ptr() as *const _ as *mut VOID,
+            emulator: &mut e,
+            context: &mut callbacks,
         };
 
         let mut reg_values: [WHV_REGISTER_VALUE; NUM_REGS as usize] = Default::default();
@@ -526,11 +510,11 @@ mod tests {
             ..Default::default()
         };
 
-        let context = CString::new(callbacks.expected_context).unwrap();
+        let mut e = Emulator::<TestCallbacks>::new().unwrap();
 
         let mut callbacks_context = CallbacksContext {
-            callbacks: &mut callbacks,
-            context: context.as_ptr() as *const _ as *mut VOID,
+            emulator: &mut e,
+            context: &mut callbacks,
         };
 
         let ret = Emulator::<TestCallbacks>::set_vp_registers_cb(
@@ -552,11 +536,12 @@ mod tests {
             returned_translation_result: RETURNED_TRANSLATION_RESULT,
             ..Default::default()
         };
-        let context = CString::new(callbacks.expected_context).unwrap();
+
+        let mut e = Emulator::<TestCallbacks>::new().unwrap();
 
         let mut callbacks_context = CallbacksContext {
-            callbacks: &mut callbacks,
-            context: context.as_ptr() as *const _ as *mut VOID,
+            emulator: &mut e,
+            context: &mut callbacks,
         };
 
         let gva: WHV_GUEST_VIRTUAL_ADDRESS = 0;

@@ -95,7 +95,7 @@ fn main() {
         vp_ref_cell: &vp_ref_cell,
     };
 
-    let mut e = Emulator::new(&mut callbacks).unwrap();
+    let mut e = Emulator::<SampleCallbacks>::new().unwrap();
 
     if cpu_info.apic_enabled {
         // Set the APIC base and send an interrupt to the VCPU
@@ -116,10 +116,10 @@ fn main() {
                 break;
             }
             WHV_RUN_VP_EXIT_REASON::WHvRunVpExitReasonMemoryAccess => {
-                handle_mmio_exit(&mut e, &exit_context)
+                handle_mmio_exit(&mut e, &mut callbacks, &exit_context)
             }
             WHV_RUN_VP_EXIT_REASON::WHvRunVpExitReasonX64IoPortAccess => {
-                handle_io_port_exit(&mut e, &exit_context)
+                handle_io_port_exit(&mut e, &mut callbacks, &exit_context)
             }
             WHV_RUN_VP_EXIT_REASON::WHvRunVpExitReasonX64Cpuid => {
                 handle_cpuid_exit(&mut vp_ref_cell.borrow_mut(), &exit_context)
@@ -340,12 +340,13 @@ fn handle_cpuid_exit(vp: &mut VirtualProcessor, exit_context: &WHV_RUN_VP_EXIT_C
 
 fn handle_mmio_exit<T: EmulatorCallbacks>(
     e: &mut Emulator<T>,
+    context: &mut T,
     exit_context: &WHV_RUN_VP_EXIT_CONTEXT,
 ) {
     let mem_access_ctx = unsafe { &exit_context.anon_union.MemoryAccess };
     let _status = e
         .try_mmio_emulation(
-            std::ptr::null_mut(),
+            context,
             &exit_context.VpContext,
             mem_access_ctx,
         )
@@ -354,12 +355,13 @@ fn handle_mmio_exit<T: EmulatorCallbacks>(
 
 fn handle_io_port_exit<T: EmulatorCallbacks>(
     e: &mut Emulator<T>,
+    context: &mut T,
     exit_context: &WHV_RUN_VP_EXIT_CONTEXT,
 ) {
     let io_port_access_ctx = unsafe { &exit_context.anon_union.IoPortAccess };
     let _status = e
         .try_io_emulation(
-            std::ptr::null_mut(),
+            context,
             &exit_context.VpContext,
             io_port_access_ctx,
         )
@@ -560,7 +562,6 @@ struct SampleCallbacks<'a> {
 impl<'a> EmulatorCallbacks for SampleCallbacks<'a> {
     fn io_port(
         &mut self,
-        _context: *mut VOID,
         io_access: &mut WHV_EMULATOR_IO_ACCESS_INFO,
     ) -> HRESULT {
         if io_access.Direction == 1 {
@@ -595,7 +596,6 @@ impl<'a> EmulatorCallbacks for SampleCallbacks<'a> {
 
     fn memory(
         &mut self,
-        _context: *mut VOID,
         memory_access: &mut WHV_EMULATOR_MEMORY_ACCESS_INFO,
     ) -> HRESULT {
         let addr = memory_access.GpaAddress;
@@ -660,7 +660,6 @@ impl<'a> EmulatorCallbacks for SampleCallbacks<'a> {
 
     fn get_virtual_processor_registers(
         &mut self,
-        _context: *mut VOID,
         register_names: &[WHV_REGISTER_NAME],
         register_values: &mut [WHV_REGISTER_VALUE],
     ) -> HRESULT {
@@ -673,7 +672,6 @@ impl<'a> EmulatorCallbacks for SampleCallbacks<'a> {
 
     fn set_virtual_processor_registers(
         &mut self,
-        _context: *mut VOID,
         register_names: &[WHV_REGISTER_NAME],
         register_values: &[WHV_REGISTER_VALUE],
     ) -> HRESULT {
@@ -686,7 +684,6 @@ impl<'a> EmulatorCallbacks for SampleCallbacks<'a> {
 
     fn translate_gva_page(
         &mut self,
-        _context: *mut VOID,
         gva: WHV_GUEST_VIRTUAL_ADDRESS,
         translate_flags: WHV_TRANSLATE_GVA_FLAGS,
         translation_result: &mut WHV_TRANSLATE_GVA_RESULT_CODE,
