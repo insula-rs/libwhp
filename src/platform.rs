@@ -68,7 +68,7 @@ impl Partition {
     }
 
     pub fn set_property(
-        &mut self,
+        &self,
         property_code: WHV_PARTITION_PROPERTY_CODE,
         property: &WHV_PARTITION_PROPERTY,
     ) -> Result<(), WHPError> {
@@ -80,7 +80,7 @@ impl Partition {
         Ok(())
     }
 
-    pub fn set_property_cpuid_exits(&mut self, cpuids: &[UINT32]) -> Result<(), WHPError> {
+    pub fn set_property_cpuid_exits(&self, cpuids: &[UINT32]) -> Result<(), WHPError> {
         self.set_property_from_buffer(
             WHV_PARTITION_PROPERTY_CODE::WHvPartitionPropertyCodeCpuidExitList,
             cpuids.as_ptr() as *const VOID,
@@ -90,7 +90,7 @@ impl Partition {
     }
 
     pub fn set_property_cpuid_results(
-        &mut self,
+        &self,
         cpuid_results: &[WHV_X64_CPUID_RESULT],
     ) -> Result<(), WHPError> {
         self.set_property_from_buffer(
@@ -102,14 +102,14 @@ impl Partition {
     }
 
     fn set_property_from_buffer(
-        &mut self,
+        &self,
         property_code: WHV_PARTITION_PROPERTY_CODE,
         property: *const VOID,
         size: UINT32,
     ) -> Result<(), WHPError> {
         check_result(unsafe {
             WHvSetPartitionProperty(
-                *self.partition.borrow_mut().handle(),
+                *self.partition.borrow().handle(),
                 property_code,
                 property,
                 size,
@@ -151,14 +151,14 @@ impl Partition {
         Ok(written_size)
     }
 
-    pub fn setup(&mut self) -> Result<(), WHPError> {
-        check_result(unsafe { WHvSetupPartition(*self.partition.borrow_mut().handle()) })?;
+    pub fn setup(&self) -> Result<(), WHPError> {
+        check_result(unsafe { WHvSetupPartition(*self.partition.borrow().handle()) })?;
         Ok(())
     }
 
     pub fn create_virtual_processor(&self, index: UINT32) -> Result<VirtualProcessor, WHPError> {
         check_result(unsafe {
-            WHvCreateVirtualProcessor(*self.partition.borrow_mut().handle(), index, 0)
+            WHvCreateVirtualProcessor(*self.partition.borrow().handle(), index, 0)
         })?;
         Ok(VirtualProcessor {
             partition: Rc::clone(&self.partition),
@@ -167,7 +167,7 @@ impl Partition {
     }
 
     pub fn map_gpa_range<T: Memory>(
-        &mut self,
+        &self,
         source_address: &T,
         guest_address: WHV_GUEST_PHYSICAL_ADDRESS,
         size: UINT64,
@@ -175,7 +175,7 @@ impl Partition {
     ) -> Result<GPARangeMapping, WHPError> {
         check_result(unsafe {
             WHvMapGpaRange(
-                *self.partition.borrow_mut().handle(),
+                *self.partition.borrow().handle(),
                 source_address.as_ptr(),
                 guest_address,
                 size,
@@ -220,7 +220,7 @@ impl GPARangeMapping {
 
 impl Drop for GPARangeMapping {
     fn drop(&mut self) {
-        let p = self.partition.borrow_mut();
+        let p = self.partition.borrow();
         check_result(unsafe { WHvUnmapGpaRange(*p.handle(), self.guest_address, self.size) })
             .unwrap();
     }
@@ -236,13 +236,13 @@ impl VirtualProcessor {
         return self.index;
     }
 
-    pub fn run(&mut self) -> Result<WHV_RUN_VP_EXIT_CONTEXT, WHPError> {
+    pub fn run(&self) -> Result<WHV_RUN_VP_EXIT_CONTEXT, WHPError> {
         let mut exit_context: WHV_RUN_VP_EXIT_CONTEXT = Default::default();
         let exit_context_size = std::mem::size_of::<WHV_RUN_VP_EXIT_CONTEXT>() as UINT32;
 
         check_result(unsafe {
             WHvRunVirtualProcessor(
-                *self.partition.borrow_mut().handle(),
+                *self.partition.borrow().handle(),
                 self.index,
                 &mut exit_context as *mut _ as *mut VOID,
                 exit_context_size,
@@ -251,15 +251,15 @@ impl VirtualProcessor {
         Ok(exit_context)
     }
 
-    pub fn cancel_run(&mut self) -> Result<(), WHPError> {
+    pub fn cancel_run(&self) -> Result<(), WHPError> {
         check_result(unsafe {
-            WHvCancelRunVirtualProcessor(*self.partition.borrow_mut().handle(), self.index, 0)
+            WHvCancelRunVirtualProcessor(*self.partition.borrow().handle(), self.index, 0)
         })?;
         Ok(())
     }
 
     pub fn set_registers(
-        &mut self,
+        &self,
         reg_names: &[WHV_REGISTER_NAME],
         reg_values: &[WHV_REGISTER_VALUE],
     ) -> Result<(), WHPError> {
@@ -271,7 +271,7 @@ impl VirtualProcessor {
 
         check_result(unsafe {
             WHvSetVirtualProcessorRegisters(
-                *self.partition.borrow_mut().handle(),
+                *self.partition.borrow().handle(),
                 self.index,
                 reg_names.as_ptr(),
                 num_regs as UINT32,
@@ -377,7 +377,7 @@ impl VirtualProcessor {
     pub fn request_interrupt(&self, interrupt: &WHV_INTERRUPT_CONTROL) -> Result<(), WHPError> {
         check_result(unsafe {
             WHvRequestInterrupt(
-                *self.partition.borrow_mut().handle(),
+                *self.partition.borrow().handle(),
                 interrupt,
                 std::mem::size_of::<WHV_INTERRUPT_CONTROL>() as UINT32,
             )
@@ -481,7 +481,7 @@ impl VirtualProcessor {
 impl Drop for VirtualProcessor {
     fn drop(&mut self) {
         check_result(unsafe {
-            WHvDeleteVirtualProcessor(*self.partition.borrow_mut().handle(), self.index)
+            WHvDeleteVirtualProcessor(*self.partition.borrow().handle(), self.index)
         })
         .unwrap();
     }
@@ -520,7 +520,7 @@ mod tests {
 
     #[test]
     fn test_set_get_partition_property() {
-        let mut p: Partition = Partition::new().unwrap();
+        let p: Partition = Partition::new().unwrap();
         let property_code = WHV_PARTITION_PROPERTY_CODE::WHvPartitionPropertyCodeProcessorCount;
         let mut property: WHV_PARTITION_PROPERTY = Default::default();
         property.ProcessorCount = 1;
@@ -538,7 +538,7 @@ mod tests {
 
     #[test]
     fn test_set_get_partition_property_cpuid_exits() {
-        let mut p: Partition = Partition::new().unwrap();
+        let p: Partition = Partition::new().unwrap();
         let cpuids: [UINT32; 2] = [1, 2];
 
         // Getting this property is not supported
@@ -552,7 +552,7 @@ mod tests {
     #[test]
     fn test_set_get_partition_property_cpuid_results() {
         const CPUID_EXT_HYPERVISOR: UINT32 = 1 << 31;
-        let mut p: Partition = Partition::new().unwrap();
+        let p: Partition = Partition::new().unwrap();
         let mut cpuid_results: Vec<WHV_X64_CPUID_RESULT> = Vec::new();
         let mut cpuid_result: WHV_X64_CPUID_RESULT = Default::default();
         cpuid_result.Function = 1;
@@ -569,7 +569,7 @@ mod tests {
 
     #[test]
     fn test_setup_partition() {
-        let mut p: Partition = Partition::new().unwrap();
+        let p: Partition = Partition::new().unwrap();
         let mut property: WHV_PARTITION_PROPERTY = Default::default();
         property.ProcessorCount = 1;
 
@@ -583,7 +583,7 @@ mod tests {
 
     #[test]
     fn test_setup_partition_fail() {
-        let mut p: Partition = Partition::new().unwrap();
+        let p: Partition = Partition::new().unwrap();
         match p.setup() {
             Err(e) => assert_eq!(
                 e.result(),
@@ -622,7 +622,7 @@ mod tests {
         setup_vcpu_test(&mut p);
 
         let vp_index: UINT32 = 0;
-        let mut vp = p.create_virtual_processor(vp_index).unwrap();
+        let vp = p.create_virtual_processor(vp_index).unwrap();
         let exit_context: WHV_RUN_VP_EXIT_CONTEXT = vp.run().unwrap();
 
         assert_eq!(
@@ -638,7 +638,7 @@ mod tests {
         setup_vcpu_test(&mut p);
 
         let vp_index: UINT32 = 0;
-        let mut vp = p.create_virtual_processor(vp_index).unwrap();
+        let vp = p.create_virtual_processor(vp_index).unwrap();
         vp.cancel_run().unwrap();
     }
 
@@ -648,7 +648,7 @@ mod tests {
         setup_vcpu_test(&mut p);
 
         let vp_index: UINT32 = 0;
-        let mut vp = p.create_virtual_processor(vp_index).unwrap();
+        let vp = p.create_virtual_processor(vp_index).unwrap();
 
         const NUM_REGS: UINT32 = 1;
         const REG_VALUE: UINT64 = 11111111;
