@@ -128,10 +128,10 @@ fn main() {
                 handle_msr_exit(&mut vp_ref_cell.borrow_mut(), &exit_context)
             }
             WHV_RUN_VP_EXIT_REASON::WHvRunVpExitReasonX64ApicEoi => {
-                continue;
+                println!("ApicEoi");
             }
             WHV_RUN_VP_EXIT_REASON::WHvRunVpExitReasonX64InterruptWindow => {
-                continue;
+                println!("Interrupt window");
             }
             _ => panic!("Unexpected exit type: {:?}", exit_context.ExitReason),
         };
@@ -563,16 +563,32 @@ impl<'a> EmulatorCallbacks for SampleCallbacks<'a> {
         _context: *mut VOID,
         io_access: &mut WHV_EMULATOR_IO_ACCESS_INFO,
     ) -> HRESULT {
-        if io_access.Port == 42 {
-            let data = unsafe {
-                std::slice::from_raw_parts(
-                    &io_access.Data as *const _ as *const u8,
-                    io_access.AccessSize as usize,
-                )
-            };
-            io::stdout().write(data).unwrap();
-        } else {
-            println!("Unsupported IO port");
+        if io_access.Direction == 1 {
+            // Our payload writes to port 42
+            if io_access.Port == 42 {
+                let data = unsafe {
+                    std::slice::from_raw_parts(
+                        &io_access.Data as *const _ as *const u8,
+                        io_access.AccessSize as usize,
+                    )
+                };
+                io::stdout().write(data).unwrap();
+            } else {
+                println!("Unsupported IO port");
+            }
+        }
+        else {
+            // Our payload reads from port 43. Set a value in the Data buffer
+            // to simulate an IO read, that the payload will "read" later
+            if io_access.Port == 43 {
+                let data = unsafe {
+                    std::slice::from_raw_parts_mut(
+                        &mut io_access.Data as *mut _ as *mut u8,
+                        io_access.AccessSize as usize,
+                    )
+                };
+                data[0] = 99;
+            }
         }
         S_OK
     }
@@ -582,18 +598,19 @@ impl<'a> EmulatorCallbacks for SampleCallbacks<'a> {
         _context: *mut VOID,
         memory_access: &mut WHV_EMULATOR_MEMORY_ACCESS_INFO,
     ) -> HRESULT {
+        let addr = memory_access.GpaAddress;
         match memory_access.AccessSize {
             8 => match memory_access.Direction {
                 0 => {
                     let data = &memory_access.Data as *const _ as *mut u64;
                     unsafe {
                         *data = 0x1000;
-                        println!("MMIO read: 0x{:x}", *data);
+                        println!("MMIO read: 0x{:016x} @0x{:x}", *data, addr);
                     }
                 }
                 _ => {
                     let value = unsafe { *(&memory_access.Data as *const _ as *const u64) };
-                    println!("MMIO write: 0x{:x}", value);
+                    println!("MMIO write: 0x{:016x} @0x{:x}", value, addr);
                 }
             },
             4 => match memory_access.Direction {
@@ -601,12 +618,38 @@ impl<'a> EmulatorCallbacks for SampleCallbacks<'a> {
                     let data = &memory_access.Data as *const _ as *mut u32;
                     unsafe {
                         *data = 0x1000;
-                        println!("MMIO read: 0x{:x}", *data);
+                        println!("MMIO read: 0x{:08x} @0x{:x}", *data, addr);
                     }
                 }
                 _ => {
                     let value = unsafe { *(&memory_access.Data as *const _ as *const u32) };
-                    println!("MMIO write: 0x{:x}", value);
+                    println!("MMIO write: 0x{:08x} @0x{:x}", value, addr);
+                }
+            },
+            2 => match memory_access.Direction {
+                0 => {
+                    let data = &memory_access.Data as *const _ as *mut u32;
+                    unsafe {
+                        *data = 0x22bb;
+                        println!("MMIO read: 0x{:04x} @0x{:x}", *data, addr);
+                    }
+                }
+                _ => {
+                    let value = unsafe { *(&memory_access.Data as *const _ as *const u32) };
+                    println!("MMIO write: 0x{:04x} @0x{:x}", value, addr);
+                }
+            },
+            1 => match memory_access.Direction {
+                0 => {
+                    let data = &memory_access.Data as *const _ as *mut u32;
+                    unsafe {
+                        *data = 0x58;
+                        println!("MMIO read: 0x{:02x} @0x{:x}", *data, addr);
+                    }
+                }
+                _ => {
+                    let value = unsafe { *(&memory_access.Data as *const _ as *const u32) };
+                    println!("MMIO write: 0x{:02x} @0x{:x}", value, addr);
                 }
             },
             _ => println!("Unsupported MMIO access size: {}", memory_access.AccessSize),

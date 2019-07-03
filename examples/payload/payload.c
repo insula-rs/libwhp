@@ -43,6 +43,11 @@ static void outb(uint16_t port, uint8_t value) {
     asm("outb %0, %1" : /* empty */ : "a" (value), "Nd" (port) : "memory");
 }
 
+__attribute__((unused))
+static void inb(uint16_t port, uint8_t* value) {
+    asm volatile("inb %1, %0" : "=a"(*value) : "Nd"(port));
+}
+
 static void out_string(uint16_t port, char* value) {
     const char* p;
     for (p = value; *p; ++p)
@@ -83,6 +88,20 @@ static inline uint64_t mmio_readq(volatile void *addr)
     uint64_t val;
     asm volatile("mov" "q" " %1, %0":
                  "=r" (val): "m" (*(volatile uint64_t *)addr) :"memory");
+    return val;
+}
+
+static inline void mmio_writeb(uint8_t val, volatile void *addr)
+{
+    asm volatile("mov %0, %1": :
+                 "r" (val), "m" (*(volatile uint8_t *)addr) :"memory");
+}
+
+static inline uint8_t mmio_readb(volatile void *addr)
+{
+    uint8_t val;
+    asm volatile("mov" "b" " %1, %0":
+                 "=r" (val): "m" (*(volatile uint8_t *)addr) :"memory");
     return val;
 }
 
@@ -249,6 +268,10 @@ _start(void) {
     out_string_max(LOG_PORT, id, sizeof(id));
     out_string(LOG_PORT, "\n");
 
+    unsigned char in_byte;
+    inb(43, &in_byte);
+    print_dec((uint32_t)in_byte, ": Value obtained via INB IO Port read\n");
+
     uint32_t lo, hi = 0;
     cpu_get_msr(1, &lo, &hi);
     cpu_set_msr(1, lo + 1, hi + 1);
@@ -257,8 +280,17 @@ _start(void) {
     // memory location to generate an MMIO exit
     unsigned char* mmio_buf = (unsigned char*)0x3f00000;
 
-    uint64_t data = mmio_readq(mmio_buf);
+    // Do tests of quad word
+    uint64_t data = 0;
+    data = mmio_readq(mmio_buf);
+    print_dec(data, ": Qword read via MMIO read\n");
     mmio_writeq(data + 1, mmio_buf);
+
+    // Do tests of a single byte
+    uint8_t byte = mmio_readb(mmio_buf);
+    print_dec((uint32_t)byte, ": Byte read via MMIO read\n");
+    mmio_writeb(byte + 1, mmio_buf);
+
 
     // Send an IPI to the vector we registered earlier. The host will also use
     // this as a signal to terminate the guest.
