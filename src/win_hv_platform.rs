@@ -352,7 +352,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn test_set_get_vcpu_registers() {
         with_partition(|part| {
             with_vcpu(part, |vp_index| {

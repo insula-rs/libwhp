@@ -643,7 +643,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn test_set_get_virtual_processor_registers() {
         let mut p: Partition = Partition::new().unwrap();
         setup_vcpu_test(&mut p);
