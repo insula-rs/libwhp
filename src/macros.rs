@@ -95,3 +95,81 @@ macro_rules! bitfield128 {
         }
     }
 }
+
+#[cfg(test)]
+#[allow(dead_code)]
+mod tests {
+    use common::*;
+    use win_hv_platform_defs::WHV_UINT128;
+
+    #[test]
+    fn test_bitfield() {
+        #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Default)]
+        #[allow(non_snake_case)]
+        #[repr(C)]
+        struct TEST_STRUCT_U8 {
+            pub other: UINT8,
+            pub AsUINT8: UINT8,
+        }
+
+        bitfield!(TEST_STRUCT_U8 AsUINT8: UINT8[
+            a set_a[0..2],
+            b set_b[2..4],
+            c set_c[4..8],
+        ]);
+
+        let mut obj = TEST_STRUCT_U8 {
+            other: 5,
+            AsUINT8: 4
+        };
+
+        assert_eq!(0, obj.a());
+        assert_eq!(1, obj.b());
+        assert_eq!(0, obj.c());
+
+        obj.set_c(1 as u8);
+
+        assert_eq!(1, obj.c());
+        assert_eq!(20, obj.AsUINT8);
+        assert_eq!(5, obj.other);
+    }
+
+    #[test]
+    fn test_bitfield128() {
+        #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Default)]
+        #[allow(non_snake_case)]
+        #[repr(C)]
+        struct TEST_STRUCT_U128 {
+            pub AsUINT128: WHV_UINT128,
+        }
+
+        bitfield128!(TEST_STRUCT_U128 AsUINT128: UINT64[
+            a set_a[0..32],
+            b set_b[32..64],
+            c set_c[64..96],
+            d set_d[96..128],
+        ]);
+
+        let mut obj = TEST_STRUCT_U128 {
+            AsUINT128: WHV_UINT128 {
+                Low64: 1 << 32,
+                High64: 1 << 32
+            }
+        };
+
+        assert_eq!(0, obj.a());
+        assert_eq!(1, obj.b());
+        assert_eq!(0, obj.c());
+        assert_eq!(1, obj.d());
+
+        obj.set_c(2 as u64);
+
+        assert_eq!(2, obj.c());
+        assert_eq!(
+            WHV_UINT128 {
+                Low64: 1 << 32,
+                High64: (1 << 32) | 2
+            },
+            obj.AsUINT128);
+    }
+}
