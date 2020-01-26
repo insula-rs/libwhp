@@ -141,9 +141,10 @@ static void gdt_set_descriptor(PGDT_ENTRY64 gdt, uint32_t index, uint32_t base,
 void
 initialize_gdt(PGDT_ENTRY64 gdt)
 {
-    DT_PTR64 gdt_ptr = { 0 };
+    DT_PTR64 gdt_ptr;
     uint32_t gdt_size = sizeof(GDT_ENTRY64) * NUM_GDT_ENTRIES;
 
+    memset(&gdt_ptr, 0, sizeof(gdt_ptr));
     memset(gdt, 0, gdt_size);
 
     // Fill in the special GDT pointer to be loaded into the GDT Register
@@ -161,7 +162,9 @@ initialize_gdt(PGDT_ENTRY64 gdt)
 
 void initialize_idt(PIDT_ENTRY64 idt)
 {
-    DT_PTR64 idt_ptr = { 0 };
+    DT_PTR64 idt_ptr;
+
+    memset(&idt_ptr, 0, sizeof(idt_ptr));
     
     uint32_t idt_size = sizeof(IDT_ENTRY64) * NUM_IDT_ENTRIES;
 
