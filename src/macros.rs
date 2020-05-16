@@ -57,19 +57,33 @@ macro_rules! bitfield128 {
             pub fn $thing(&self) -> $fieldtype {
                 // We assume that $r.start < $r.end and both are
                 // either smaller or greater than 64.
+                let diff = ($r.end + $r.start) & 0x3f;
                 if $r.start < 64 {
                     self.$field.Low64 <<
-                        (64 - $r.end) >> (64 - $r.end + $r.start)
+                        match $r.end {
+                            64 => 0,
+                            _  => 64 - $r.end
+                        } >> (64 - diff)
                 }
                 else {
                     self.$field.High64 <<
-                        (128 - $r.end) >> (64 - $r.end + $r.start)
+                        match $r.end {
+                            128 => 0,
+                            _ => 128 - $r.end
+                        } >> (64 - diff)
                 }
             }
             #[inline]
             #[allow(non_snake_case)]
             pub fn $set_thing(&mut self, val: $fieldtype) {
-                let mask = ((1 << ($r.end - $r.start)) - 1) << ($r.start % 64);
+                let mask;
+                let diff = $r.end - $r.start;
+                if (diff >= 64) {
+                    mask = u64::MAX << ($r.start % 64);
+                }
+                else {
+                    mask = ((1 << diff) - 1) << ($r.start % 64);
+                }
                 if $r.start < 64 {
                     self.$field.Low64 &= !mask;
                     self.$field.Low64 |= val << ($r.start % 64) & mask;
@@ -171,5 +185,17 @@ mod tests {
                 High64: (1 << 32) | 2
             },
             obj.AsUINT128);
+
+        obj.set_a(0x10111213);
+        obj.set_b(0x14151617);
+        obj.set_c(0x18191a1b);
+        obj.set_d(0x1c1d1e1f);
+
+        assert_eq!(0x10111213, obj.a());
+        assert_eq!(0x14151617, obj.b());
+        assert_eq!(0x18191a1b, obj.c());
+        assert_eq!(0x1c1d1e1f, obj.d());
+        assert_eq!(0x1415161710111213, obj.AsUINT128.Low64);
+        assert_eq!(0x1c1d1e1f18191a1b, obj.AsUINT128.High64);
     }
 }
