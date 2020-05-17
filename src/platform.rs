@@ -352,7 +352,7 @@ impl VirtualProcessor {
         gva: WHV_GUEST_PHYSICAL_ADDRESS,
         range_size_in_bytes: UINT64,
         bitmap_size_in_bytes: UINT32,
-    ) -> Result<(Box<[UINT64]>), WHPError> {
+    ) -> Result<Box<[UINT64]>, WHPError> {
         let num_elem = bitmap_size_in_bytes / std::mem::size_of::<UINT64>() as UINT32;
         let mut bitmap: Box<[UINT64]> = vec![0; num_elem as usize].into_boxed_slice();
 
@@ -411,7 +411,7 @@ impl VirtualProcessor {
     pub fn get_partition_counters(
         &self,
         partition_counter_set: WHV_PARTITION_COUNTER_SET,
-    ) -> Result<(WHV_PARTITION_COUNTERS), WHPError> {
+    ) -> Result<WHV_PARTITION_COUNTERS, WHPError> {
         let mut partition_counters: WHV_PARTITION_COUNTERS = Default::default();
         let mut bytes_written: UINT32 = 0;
 
@@ -471,7 +471,7 @@ impl VirtualProcessor {
         Ok(processor_counters)
     }
 
-    pub fn get_xsave_state(&self) -> Result<(XsaveArea), WHPError> {
+    pub fn get_xsave_state(&self) -> Result<XsaveArea, WHPError> {
         let mut xsave_area: XsaveArea = Default::default();
         let mut bytes_written: UINT32 = 0;
 

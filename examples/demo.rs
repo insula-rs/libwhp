@@ -239,10 +239,8 @@ fn send_ipi(vp: &mut VirtualProcessor, vector: u32) {
     //   contain the APIC ID of the target processor (APIC ID = 0)
     // Level = 1 and Destination Shorthand = 1, but the underlying API will
     // actually ignore this.
-    unsafe {
-        message.anon_struct.Data = (0x00044000 | vector) as UINT32;
-        message.anon_struct.Address = 0;
-    }
+    message.anon_struct.Data = (0x00044000 | vector) as UINT32;
+    message.anon_struct.Address = 0;
 
     send_msi(vp, &message);
 }
