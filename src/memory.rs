@@ -22,7 +22,6 @@ use win_memory::*;
 
 pub trait Memory {
     fn as_slice_mut(&mut self) -> &mut [u8];
-    fn as_slice(&self) -> &[u8];
     fn as_ptr(&self) -> *const VOID;
     fn get_size(&self) -> usize;
 }
@@ -77,10 +76,6 @@ impl VirtualMemory {
 impl Memory for VirtualMemory {
     fn as_slice_mut(&mut self) -> &mut [u8] {
         unsafe { std::slice::from_raw_parts_mut(self.address as *mut u8, self.size) }
-    }
-    
-    fn as_slice(&self) -> &[u8] {
-        unsafe { std::slice::from_raw_parts(self.address as *mut u8, self.size) }
     }
 
     fn as_ptr(&self) -> *const VOID {
