@@ -79,33 +79,13 @@ fn dump_instruction_bytes(fmt: &mut fmt::Formatter, bytes: &[u8]) -> fmt::Result
     writeln!(fmt, "")
 }
 
-fn dump_access_info(fmt: &mut fmt::Formatter, access_info: &WHV_MEMORY_ACCESS_INFO) -> fmt::Result {
-    match access_info.AccessType() {
-        0 => write!(fmt, "Read")?,
-        1 => write!(fmt, "Write")?,
-        2 => write!(fmt, "Execute")?,
-        _ => write!(fmt, "Unknown")?
-    };
-
-    if access_info.GpaUnmapped() == 1 {
-        write!(fmt, " GpaUnmapped")?;
-    }
-    
-    if access_info.GvaValid() == 1 {
-        write!(fmt, " GpaValid")?;
-    }
-
-    writeln!(fmt, "")
-}
-
 impl fmt::Debug for WHV_MEMORY_ACCESS_CONTEXT {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         writeln!(fmt, "MemoryAccess:")?;
         writeln!(fmt, "  InstructionByteCount: {}", self.InstructionByteCount)?;
         write!(fmt, "  InstructionBytes: ")?;
         dump_instruction_bytes(fmt, &self.InstructionBytes)?;
-        write!(fmt, "  AccessInfo: 0x{:x} - ", self.AccessInfo.AsUINT32)?;
-        dump_access_info(fmt, &self.AccessInfo)?;
+        writeln!(fmt, "  AccessInfo: 0x{:x}", self.AccessInfo.AsUINT32)?;
         writeln!(fmt, "  Gpa: 0x{:x}", self.Gpa)?;
         writeln!(fmt, "  Gva: 0x{:x}", self.Gva)
     }
